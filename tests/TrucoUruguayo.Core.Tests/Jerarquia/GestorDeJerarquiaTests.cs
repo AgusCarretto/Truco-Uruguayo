@@ -58,4 +58,56 @@ public class GestorDeJerarquiaTests
 
         Assert.False(gestor.EsPieza(doceDeOro));
     }
+
+    [Theory]
+    [InlineData(2, 30)]
+    [InlineData(4, 29)]
+    [InlineData(5, 28)]
+    [InlineData(11, 27)]
+    [InlineData(10, 27)]
+    public void ValorEnvido_Piezas_DevuelveValorFijo(int numero, int envidoEsperado)
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var pieza = new Carta(numero, Palo.Oro);
+
+        Assert.Equal(envidoEsperado, gestor.ValorEnvido(pieza));
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(12)]
+    public void ValorEnvido_FigurasNegras_ValenCero(int numero)
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var negra = new Carta(numero, Palo.Espada); // distinto palo que la muestra
+
+        Assert.Equal(0, gestor.ValorEnvido(negra));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(6)]
+    [InlineData(7)]
+    public void ValorEnvido_CartasComunes_ValenSuNumero(int numero)
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var comun = new Carta(numero, Palo.Copa);
+
+        Assert.Equal(numero, gestor.ValorEnvido(comun));
+    }
+
+    [Fact]
+    public void ValorEnvido_DocePromovido_HeredaElValorDeLaPiezaQueReemplaza()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(4, Palo.Oro)); // pieza Cuatro
+
+        var doceDeOro = new Carta(12, Palo.Oro);
+
+        Assert.Equal(29, gestor.ValorEnvido(doceDeOro));
+    }
 }
