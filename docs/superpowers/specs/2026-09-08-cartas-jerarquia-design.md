@@ -103,14 +103,21 @@ public class GestorDeJerarquia
 
 ## Notas de implementación
 
-- Escala entera de `ValorTruco`: las piezas ocupan los valores más altos
-  (19 a 15, de Dos a Sota), y la jerarquía clásica baja de 14 a 1, con
-  empates compartiendo el mismo entero (ej. 1 Copa y 1 Oro ambos valen lo
-  mismo).
-- `GestorDeJerarquia` no modela el mazo ni el descarte de la muestra: solo
-  calcula valores dada una `Carta` que le pasen. Evitar que la carta de
-  muestra se reparta como jugable es responsabilidad de otra clase (fuera de
-  este pedido).
+- `ValorTruco` es puramente ordinal: el entero en sí no representa puntos ni
+  tiene significado fuera de esta clase, solo sirve para poder comparar dos
+  cartas y saber cuál gana la mano (a diferencia del Envido, donde el número
+  sí es un valor real del juego). Internamente las piezas ocupan los enteros
+  más altos (19 a 15, de Dos a Sota) y la jerarquía clásica baja de 14 a 1,
+  con empates compartiendo el mismo entero (ej. 1 Copa y 1 Oro ambos valen lo
+  mismo) — pero esa numeración exacta es un detalle de implementación, no
+  una regla del juego.
+- `GestorDeJerarquia` no modela el mazo, el descarte de la muestra, los
+  turnos entre jugadores ni la ventana en la que se puede cantar Envido
+  (solo en la primera ronda de cada mano). Esas reglas de flujo de juego
+  quedan para una clase futura (tipo `Ronda`/`Mano`) que sea quien orqueste
+  la partida turno a turno; `GestorDeJerarquia` solo responde "¿cuánto vale
+  esta carta?" y "¿quién gana entre estas dos?" cuando esa otra clase se lo
+  pregunte.
 
 ## Testing
 
