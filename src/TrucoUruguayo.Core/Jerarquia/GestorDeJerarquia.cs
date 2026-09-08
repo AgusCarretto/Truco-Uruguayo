@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TrucoUruguayo.Core.Modelo;
 
 namespace TrucoUruguayo.Core.Jerarquia;
@@ -104,4 +105,42 @@ public class GestorDeJerarquia
     }
 
     public int Comparar(Carta a, Carta b) => ValorTruco(a).CompareTo(ValorTruco(b));
+
+    public int MejorEnvido(Carta[] mano)
+    {
+        if (mano == null || mano.Length != 3)
+        {
+            throw new ArgumentException("La mano debe tener exactamente 3 cartas.", nameof(mano));
+        }
+
+        var piezasEnMano = mano.Where(EsPieza).ToList();
+        if (piezasEnMano.Count > 0)
+        {
+            var basePieza = piezasEnMano.OrderByDescending(ValorEnvido).First();
+            var restantes = new List<Carta>(mano);
+            restantes.Remove(basePieza);
+            var mejorRestante = restantes.Max(ValorEnvido);
+            return ValorEnvido(basePieza) + mejorRestante;
+        }
+
+        int? mejorPar = null;
+        for (var i = 0; i < mano.Length; i++)
+        {
+            for (var j = i + 1; j < mano.Length; j++)
+            {
+                if (mano[i].Palo != mano[j].Palo)
+                {
+                    continue;
+                }
+
+                var suma = ValorEnvido(mano[i]) + ValorEnvido(mano[j]) + 20;
+                if (mejorPar == null || suma > mejorPar)
+                {
+                    mejorPar = suma;
+                }
+            }
+        }
+
+        return mejorPar ?? mano.Max(ValorEnvido);
+    }
 }

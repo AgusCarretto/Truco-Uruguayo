@@ -210,4 +210,74 @@ public class GestorDeJerarquiaTests
         Assert.True(gestor.Comparar(debil, fuerte) < 0);
         Assert.Equal(0, gestor.Comparar(empateA, empateB));
     }
+
+    [Fact]
+    public void MejorEnvido_SinPieza_MismoPaloSumaMas20()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(6, Palo.Copa));
+
+        var mano = new[]
+        {
+            new Carta(7, Palo.Espada),
+            new Carta(6, Palo.Espada),
+            new Carta(3, Palo.Oro),
+        };
+
+        Assert.Equal(33, gestor.MejorEnvido(mano)); // 7 + 6 + 20, mismo palo Espada
+    }
+
+    [Fact]
+    public void MejorEnvido_SinPieza_SinParTomaLaCartaMasAlta()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(6, Palo.Copa));
+
+        var mano = new[]
+        {
+            new Carta(7, Palo.Espada),
+            new Carta(3, Palo.Oro),
+            new Carta(1, Palo.Basto),
+        };
+
+        Assert.Equal(7, gestor.MejorEnvido(mano));
+    }
+
+    [Fact]
+    public void MejorEnvido_ConPieza_SumaLaCartaMasAltaSinBonificacion()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var mano = new[]
+        {
+            new Carta(2, Palo.Oro),    // pieza Dos, envido 30
+            new Carta(7, Palo.Oro),    // mismo palo que la pieza, pero NO se suma +20
+            new Carta(6, Palo.Espada),
+        };
+
+        Assert.Equal(37, gestor.MejorEnvido(mano)); // 30 + 7
+    }
+
+    [Fact]
+    public void MejorEnvido_ConDosPiezas_UsaLaMasAltaComoBaseYLaOtraComoSuma()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var mano = new[]
+        {
+            new Carta(2, Palo.Oro),    // pieza Dos, envido 30
+            new Carta(4, Palo.Oro),    // pieza Cuatro, envido 29
+            new Carta(6, Palo.Espada), // envido 6
+        };
+
+        Assert.Equal(59, gestor.MejorEnvido(mano)); // 30 + 29
+    }
+
+    [Fact]
+    public void MejorEnvido_ManoConDistintoDeTresCartas_Arroja()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(6, Palo.Copa));
+
+        var manoDeDos = new[] { new Carta(1, Palo.Espada), new Carta(2, Palo.Oro) };
+
+        Assert.Throws<ArgumentException>(() => gestor.MejorEnvido(manoDeDos));
+    }
 }
