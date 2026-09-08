@@ -24,6 +24,15 @@ public class GestorDeJerarquia
         [Pieza.Sota] = 27,
     };
 
+    private static readonly Dictionary<Pieza, int> ValorTrucoPorPieza = new()
+    {
+        [Pieza.Dos] = 19,
+        [Pieza.Cuatro] = 18,
+        [Pieza.Cinco] = 17,
+        [Pieza.Caballo] = 16,
+        [Pieza.Sota] = 15,
+    };
+
     private readonly Carta _muestra;
     private readonly Pieza? _piezaPromovida;
 
@@ -65,4 +74,34 @@ public class GestorDeJerarquia
 
         return carta.Numero;
     }
+
+    public int ValorTruco(Carta carta)
+    {
+        var pieza = ObtenerPieza(carta);
+        if (pieza != null)
+        {
+            return ValorTrucoPorPieza[pieza.Value];
+        }
+
+        return (carta.Numero, carta.Palo) switch
+        {
+            (1, Palo.Espada) => 14,
+            (1, Palo.Basto) => 13,
+            (7, Palo.Espada) => 12,
+            (7, Palo.Oro) => 11,
+            (3, _) => 10,
+            (2, _) => 9,
+            (1, _) => 8,
+            (12, _) => 7,
+            (11, _) => 6,
+            (10, _) => 5,
+            (7, _) => 4,
+            (6, _) => 3,
+            (5, _) => 2,
+            (4, _) => 1,
+            _ => throw new ArgumentOutOfRangeException(nameof(carta), carta, "Numero de carta invalido."),
+        };
+    }
+
+    public int Comparar(Carta a, Carta b) => ValorTruco(a).CompareTo(ValorTruco(b));
 }
