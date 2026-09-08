@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace TrucoUruguayo.Core.Modelo;
 
-public class Carta
+public sealed class Carta : IEquatable<Carta>
 {
     private static readonly int[] NumerosValidos = { 1, 2, 3, 4, 5, 6, 7, 10, 11, 12 };
 
@@ -22,12 +22,15 @@ public class Carta
         Palo = palo;
     }
 
-    public override bool Equals(object? obj)
-    {
-        return obj is Carta otra && Numero == otra.Numero && Palo == otra.Palo;
-    }
+    public bool Equals(Carta? otra) => otra is not null && Numero == otra.Numero && Palo == otra.Palo;
+
+    public override bool Equals(object? obj) => Equals(obj as Carta);
 
     public override int GetHashCode() => HashCode.Combine(Numero, Palo);
+
+    public static bool operator ==(Carta? a, Carta? b) => a is null ? b is null : a.Equals(b);
+
+    public static bool operator !=(Carta? a, Carta? b) => !(a == b);
 
     public override string ToString() => $"{Numero} de {Palo}";
 }

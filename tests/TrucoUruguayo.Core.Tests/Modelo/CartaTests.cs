@@ -39,4 +39,18 @@ public class CartaTests
         Assert.Equal(a, b);
         Assert.NotEqual(a, c);
     }
+
+    [Fact]
+    public void OperadorIgualdad_ComparaPorValor()
+    {
+        var a = new Carta(4, Palo.Espada);
+        var b = new Carta(4, Palo.Espada);
+        var c = new Carta(4, Palo.Basto);
+
+        Assert.True(a == b);
+        Assert.False(a == c);
+        Assert.False(a != b);
+        Assert.True(a != c);
+        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+    }
 }

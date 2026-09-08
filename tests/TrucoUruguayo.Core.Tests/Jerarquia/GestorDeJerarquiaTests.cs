@@ -280,4 +280,57 @@ public class GestorDeJerarquiaTests
 
         Assert.Throws<ArgumentException>(() => gestor.MejorEnvido(manoDeDos));
     }
+
+    [Fact]
+    public void MejorEnvido_ConDocePromovido_HeredaElValorDeLaPiezaQueReemplaza()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(4, Palo.Oro)); // pieza Cuatro
+
+        var mano = new[]
+        {
+            new Carta(12, Palo.Oro), // promovido, hereda Cuatro: envido 29
+            new Carta(7, Palo.Oro),
+            new Carta(6, Palo.Espada),
+        };
+
+        Assert.Equal(36, gestor.MejorEnvido(mano)); // 29 + 7
+    }
+
+    [Fact]
+    public void MejorEnvido_ConTresPiezas_UsaLaMasAltaComoBaseYLaSegundaComoSuma()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var mano = new[]
+        {
+            new Carta(2, Palo.Oro),  // pieza Dos, envido 30
+            new Carta(4, Palo.Oro),  // pieza Cuatro, envido 29
+            new Carta(5, Palo.Oro),  // pieza Cinco, envido 28
+        };
+
+        Assert.Equal(59, gestor.MejorEnvido(mano)); // 30 + 29
+    }
+
+    [Fact]
+    public void MejorEnvido_EmpateCaballoSota_DaElMismoResultado()
+    {
+        var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
+
+        var manoCaballoPrimero = new[]
+        {
+            new Carta(11, Palo.Oro), // pieza Caballo, envido 27
+            new Carta(10, Palo.Oro), // pieza Sota, envido 27
+            new Carta(6, Palo.Espada),
+        };
+
+        var manoSotaPrimero = new[]
+        {
+            new Carta(10, Palo.Oro), // pieza Sota, envido 27
+            new Carta(11, Palo.Oro), // pieza Caballo, envido 27
+            new Carta(6, Palo.Espada),
+        };
+
+        Assert.Equal(54, gestor.MejorEnvido(manoCaballoPrimero)); // 27 + 27
+        Assert.Equal(54, gestor.MejorEnvido(manoSotaPrimero));
+    }
 }
