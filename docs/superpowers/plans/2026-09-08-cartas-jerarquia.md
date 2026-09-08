@@ -515,15 +515,15 @@ Agregar a `tests/TrucoUruguayo.Core.Tests/Jerarquia/GestorDeJerarquiaTests.cs`:
         var sieteEspada = new Carta(7, Palo.Espada);
         var sieteOro = new Carta(7, Palo.Oro);
         var tres = new Carta(3, Palo.Copa);
-        var dos = new Carta(2, Palo.Copa);
+        var dos = new Carta(2, Palo.Oro); // no Palo.Copa: 2 del palo de la muestra seria pieza
         var anchoFalso = new Carta(1, Palo.Copa);
         var doce = new Carta(12, Palo.Copa);
-        var once = new Carta(11, Palo.Copa);
-        var diez = new Carta(10, Palo.Copa);
+        var once = new Carta(11, Palo.Oro); // no Palo.Copa: 11 del palo de la muestra seria pieza
+        var diez = new Carta(10, Palo.Oro); // no Palo.Copa: 10 del palo de la muestra seria pieza
         var sieteBasto = new Carta(7, Palo.Basto);
         var seisComun = new Carta(6, Palo.Basto);
-        var cinco = new Carta(5, Palo.Copa);
-        var cuatro = new Carta(4, Palo.Copa);
+        var cinco = new Carta(5, Palo.Oro); // no Palo.Copa: 5 del palo de la muestra seria pieza
+        var cuatro = new Carta(4, Palo.Oro); // no Palo.Copa: 4 del palo de la muestra seria pieza
 
         Assert.True(gestor.ValorTruco(anchoEspada) > gestor.ValorTruco(anchoBasto));
         Assert.True(gestor.ValorTruco(anchoBasto) > gestor.ValorTruco(sieteEspada));
@@ -568,7 +568,7 @@ Agregar a `tests/TrucoUruguayo.Core.Tests/Jerarquia/GestorDeJerarquiaTests.cs`:
         var gestor = new GestorDeJerarquia(new Carta(6, Palo.Copa));
 
         var fuerte = new Carta(1, Palo.Espada);
-        var debil = new Carta(4, Palo.Copa);
+        var debil = new Carta(4, Palo.Oro); // no Palo.Copa: 4 del palo de la muestra seria pieza
         var empateA = new Carta(1, Palo.Copa);
         var empateB = new Carta(1, Palo.Oro);
 
