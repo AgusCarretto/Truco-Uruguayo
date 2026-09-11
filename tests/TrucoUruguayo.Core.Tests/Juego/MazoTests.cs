@@ -55,4 +55,17 @@ public class MazoTests
             Assert.Equal(7, todasLasCartas.Distinct().Count());
         }
     }
+
+    [Fact]
+    public void Mezclar_ElMazoContieneLasCuarentaCartas()
+    {
+        var muestrasVistas = new HashSet<Carta>();
+        for (var i = 0; i < 1000; i++)
+        {
+            var mazo = new Mazo();
+            mazo.Mezclar();
+            muestrasVistas.Add(mazo.Repartir().Muestra);
+        }
+        Assert.Equal(40, muestrasVistas.Count);
+    }
 }
