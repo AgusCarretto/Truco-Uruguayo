@@ -48,6 +48,19 @@ public class RondaTests
             var dosDelPaloDeLaMuestra = new Carta(2, ronda.Muestra.Palo);
 
             Assert.Equal(Pieza.Dos, ronda.Gestor.ObtenerPieza(dosDelPaloDeLaMuestra));
+
+            var doceDelPaloDeLaMuestra = new Carta(12, ronda.Muestra.Palo);
+            var piezaEsperadaParaElDoce = ronda.Muestra.Numero switch
+            {
+                2 => Pieza.Dos,
+                4 => Pieza.Cuatro,
+                5 => Pieza.Cinco,
+                11 => Pieza.Caballo,
+                10 => Pieza.Sota,
+                _ => (Pieza?)null,
+            };
+
+            Assert.Equal(piezaEsperadaParaElDoce, ronda.Gestor.ObtenerPieza(doceDelPaloDeLaMuestra));
         }
     }
 }
