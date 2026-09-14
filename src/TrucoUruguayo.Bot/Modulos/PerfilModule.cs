@@ -16,6 +16,7 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("perfil", "Mira tus estadisticas y monedas")]
     public async Task PerfilAsync()
     {
+        // El interceptor global en Program.cs garantiza que el usuario ya existe antes de llegar aca.
         var usuario = (await _usuarioRepository.ObtenerUsuarioAsync(Context.User.Id))!;
 
         var embed = new EmbedBuilder()

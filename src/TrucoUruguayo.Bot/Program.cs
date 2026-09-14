@@ -54,11 +54,24 @@ interactions.Log += mensaje =>
 
 client.InteractionCreated += async interaction =>
 {
-    if (interaction is SocketSlashCommand
-        && await usuarioRepository.ObtenerUsuarioAsync(interaction.User.Id) is null)
+    try
     {
-        await usuarioRepository.RegistrarUsuarioAsync(interaction.User.Id, interaction.User.Username);
-        await EnviarBienvenidaAsync(interaction);
+        // Garantiza que todo SlashCommand handler (ej. PerfilModule) vea siempre un usuario ya registrado.
+        if (interaction is SocketSlashCommand
+            && await usuarioRepository.ObtenerUsuarioAsync(interaction.User.Id) is null)
+        {
+            await usuarioRepository.RegistrarUsuarioAsync(interaction.User.Id, interaction.User.Username);
+            await EnviarBienvenidaAsync(interaction);
+            return;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error en el chequeo de usuario nuevo: {ex.Message}");
+        if (!interaction.HasResponded)
+        {
+            await interaction.RespondAsync("Hubo un problema, probá de nuevo en un rato.", ephemeral: true);
+        }
         return;
     }
 
