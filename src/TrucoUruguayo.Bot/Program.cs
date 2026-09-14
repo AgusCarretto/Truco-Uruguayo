@@ -6,6 +6,7 @@ using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using TrucoUruguayo.Bot.Datos;
+using TrucoUruguayo.Bot.Servicios;
 
 Env.Load();
 
@@ -34,6 +35,9 @@ var services = new ServiceCollection()
     }))
     .AddSingleton(provider => new InteractionService(provider.GetRequiredService<DiscordSocketClient>()))
     .AddSingleton(new UsuarioRepository(connectionString))
+    .AddSingleton(new TiendaRepository(connectionString))
+    .AddSingleton<GestorPartidas>()
+    .AddSingleton<GeneradorImagenes>()
     .BuildServiceProvider();
 
 var client = services.GetRequiredService<DiscordSocketClient>();
@@ -76,7 +80,12 @@ client.InteractionCreated += async interaction =>
     }
 
     var context = new SocketInteractionContext(client, interaction);
-    await interactions.ExecuteCommandAsync(context, services);
+    var resultado = await interactions.ExecuteCommandAsync(context, services);
+
+    if (!resultado.IsSuccess && !interaction.HasResponded)
+    {
+        await interaction.RespondAsync("😵 Hubo un problema al procesar eso, probá de nuevo en un rato.", ephemeral: true);
+    }
 };
 
 client.Ready += async () =>
@@ -94,7 +103,7 @@ async Task EnviarBienvenidaAsync(SocketInteraction interaction)
         .Build();
 
     var componentes = new ComponentBuilder()
-        .WithButton("¿Cómo se juega?", "como_jugar", ButtonStyle.Primary)
+        .WithButton("❓ ¿Cómo se juega?", "como_jugar", ButtonStyle.Primary)
         .Build();
 
     await interaction.RespondAsync(embed: embed, components: componentes, ephemeral: true);

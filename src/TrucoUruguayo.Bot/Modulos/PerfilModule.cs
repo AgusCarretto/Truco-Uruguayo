@@ -7,26 +7,42 @@ namespace TrucoUruguayo.Bot.Modulos;
 public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly UsuarioRepository _usuarioRepository;
+    private readonly TiendaRepository _tiendaRepository;
 
-    public PerfilModule(UsuarioRepository usuarioRepository)
+    public PerfilModule(UsuarioRepository usuarioRepository, TiendaRepository tiendaRepository)
     {
         _usuarioRepository = usuarioRepository;
+        _tiendaRepository = tiendaRepository;
     }
 
     [SlashCommand("perfil", "Mira tus estadisticas y monedas")]
-    public async Task PerfilAsync()
+    public async Task PerfilAsync([Summary("usuario", "De quien ver el perfil")] IUser? usuario = null)
     {
-        // El interceptor global en Program.cs garantiza que el usuario ya existe antes de llegar aca.
-        var usuario = (await _usuarioRepository.ObtenerUsuarioAsync(Context.User.Id))!;
+        var objetivo = usuario ?? Context.User;
+        var usuarioDb = await _usuarioRepository.ObtenerUsuarioAsync(objetivo.Id);
+
+        if (usuarioDb is null)
+        {
+            await RespondAsync($"❓ {objetivo.Mention} todavía no jugó nunca con el bot.", ephemeral: true);
+            return;
+        }
+
+        var inventario = await _tiendaRepository.ObtenerInventarioAsync(objetivo.Id);
+        var equipados = inventario.Where(item => item.Equipado).ToList();
 
         var embed = new EmbedBuilder()
-            .WithTitle(usuario.Nombre)
-            .AddField("Monedas", usuario.Monedas, true)
-            .AddField("Victorias", usuario.Victorias, true)
-            .AddField("Derrotas", usuario.Derrotas, true)
-            .WithColor(Color.Gold)
-            .Build();
+            .WithTitle($"👤 {usuarioDb.Nombre}")
+            .AddField("🪙 Monedas", usuarioDb.Monedas, true)
+            .AddField("✅ Victorias", usuarioDb.Victorias, true)
+            .AddField("❌ Derrotas", usuarioDb.Derrotas, true)
+            .AddField("✨ XP", usuarioDb.Xp, true)
+            .WithColor(Color.Gold);
 
-        await RespondAsync(embed: embed);
+        if (equipados.Count > 0)
+        {
+            embed.AddField("🏆 Equipamiento Activo", string.Join('\n', equipados.Select(item => item.Nombre)));
+        }
+
+        await RespondAsync(embed: embed.Build());
     }
 }

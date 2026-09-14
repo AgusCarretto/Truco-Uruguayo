@@ -7,4 +7,5 @@ public class Usuario
     public int Monedas { get; set; }
     public int Victorias { get; set; }
     public int Derrotas { get; set; }
+    public int Xp { get; set; }
 }
