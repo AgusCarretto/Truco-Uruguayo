@@ -16,8 +16,7 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("perfil", "Mira tus estadisticas y monedas")]
     public async Task PerfilAsync()
     {
-        var usuario = await _usuarioRepository.ObtenerUsuarioAsync(Context.User.Id)
-            ?? await _usuarioRepository.RegistrarUsuarioAsync(Context.User.Id, Context.User.Username);
+        var usuario = (await _usuarioRepository.ObtenerUsuarioAsync(Context.User.Id))!;
 
         var embed = new EmbedBuilder()
             .WithTitle(usuario.Nombre)
