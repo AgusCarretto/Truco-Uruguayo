@@ -38,6 +38,7 @@ var services = new ServiceCollection()
 
 var client = services.GetRequiredService<DiscordSocketClient>();
 var interactions = services.GetRequiredService<InteractionService>();
+var usuarioRepository = services.GetRequiredService<UsuarioRepository>();
 
 client.Log += mensaje =>
 {
@@ -45,8 +46,22 @@ client.Log += mensaje =>
     return Task.CompletedTask;
 };
 
+interactions.Log += mensaje =>
+{
+    Console.WriteLine(mensaje.ToString());
+    return Task.CompletedTask;
+};
+
 client.InteractionCreated += async interaction =>
 {
+    if (interaction is SocketSlashCommand
+        && await usuarioRepository.ObtenerUsuarioAsync(interaction.User.Id) is null)
+    {
+        await usuarioRepository.RegistrarUsuarioAsync(interaction.User.Id, interaction.User.Username);
+        await EnviarBienvenidaAsync(interaction);
+        return;
+    }
+
     var context = new SocketInteractionContext(client, interaction);
     await interactions.ExecuteCommandAsync(context, services);
 };
@@ -56,6 +71,21 @@ client.Ready += async () =>
     await interactions.AddModulesAsync(Assembly.GetExecutingAssembly(), services);
     await interactions.RegisterCommandsToGuildAsync(guildId);
 };
+
+async Task EnviarBienvenidaAsync(SocketInteraction interaction)
+{
+    var embed = new EmbedBuilder()
+        .WithTitle("🎉 ¡Bienvenido a Truco Uruguayo!")
+        .WithDescription("Te registramos y te regalamos 1000 monedas para arrancar. Tirá tu comando de nuevo cuando quieras.")
+        .WithColor(Color.Gold)
+        .Build();
+
+    var componentes = new ComponentBuilder()
+        .WithButton("¿Cómo se juega?", "como_jugar", ButtonStyle.Primary)
+        .Build();
+
+    await interaction.RespondAsync(embed: embed, components: componentes, ephemeral: true);
+}
 
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
