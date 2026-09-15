@@ -211,7 +211,14 @@ public class Ronda
                 throw new InvalidOperationException("No se puede cantar truco en este momento.");
             }
 
-            if (TurnoCantoTruco != null && TurnoCantoTruco != jugadorId)
+            if (TurnoCantoTruco is null)
+            {
+                if (jugadorId != TurnoActual)
+                {
+                    throw new InvalidOperationException("Solo podés cantar Truco en tu turno.");
+                }
+            }
+            else if (TurnoCantoTruco != jugadorId)
             {
                 throw new InvalidOperationException("Solo el jugador con derecho a subir la apuesta puede cantar.");
             }

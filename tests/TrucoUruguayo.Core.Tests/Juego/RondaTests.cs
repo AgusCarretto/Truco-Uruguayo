@@ -679,7 +679,10 @@ public class RondaTests
     [Fact]
     public void ResponderTruco_NoQuieroElRetruco_GanaLaRondaQuienLoCantoConLosPuntosDeTruco()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 2);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) },
+            puntosObjetivo: 2);
 
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
         ronda.ResponderTruco(Jugador2, RespuestaCanto.Quiero);
@@ -696,7 +699,10 @@ public class RondaTests
     [Fact]
     public void IrseAlMazo_TerminaLaRondaYElRivalSeLlevaElValorDeTrucoActual()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 2);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) },
+            puntosObjetivo: 2);
 
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
         ronda.ResponderTruco(Jugador2, RespuestaCanto.Quiero);
@@ -773,7 +779,9 @@ public class RondaTests
     [Fact]
     public void GritarTruco_ActualizaUltimaActividad()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         var antes = DateTime.UtcNow;
 
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
@@ -784,7 +792,9 @@ public class RondaTests
     [Fact]
     public void ResponderTruco_ActualizaUltimaActividad()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
         var antes = DateTime.UtcNow;
 
@@ -793,12 +803,39 @@ public class RondaTests
         Assert.True(ronda.UltimaActividad >= antes);
     }
 
+    [Fact]
+    public void GritarTruco_PrimerTrucoDeLaManoFueraDeTurno_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        // Jugador1 es mano (le toca a el); Jugador2 intenta cantar Truco primero.
+        var excepcion = Record.Exception(() => ronda.GritarTruco(Jugador2, CantoTruco.Truco));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
+    [Fact]
+    public void GritarTruco_PrimerTrucoDeLaManoEnTurno_Funciona()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        var excepcion = Record.Exception(() => ronda.GritarTruco(Jugador1, CantoTruco.Truco));
+
+        Assert.Null(excepcion);
+    }
+
     // --- Escalada de Truco "tipo tenis" ---
 
     [Fact]
     public void GritarTruco_RivalEscalaDirectoSinDecirQuiero_AceptaElAnteriorYQuedaPendienteElNuevo()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
 
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
         // Jugador2 es quien debe responder. En vez de "Quiero", escala directo a Retruco.
@@ -815,7 +852,9 @@ public class RondaTests
     [Fact]
     public void GritarTruco_EscaladaTenis_ElQueNoDebeResponderNoPuedeEscalar()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
 
         // Jugador1 (quien ya cantó) intenta escalar de nuevo antes de que Jugador2 responda.
@@ -825,7 +864,9 @@ public class RondaTests
     [Fact]
     public void GritarTruco_EscaladaTenis_SaltandoUnNivel_ArrojaYNoCambiaNadaDelEstadoAnterior()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
 
         // Jugador2 intenta saltar directo a Vale Cuatro sin pasar por Retruco.
@@ -843,7 +884,9 @@ public class RondaTests
     [Fact]
     public void GritarTruco_EscaladaTenisHastaValeCuatro_TerminaConValorCuatro()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
 
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
         ronda.GritarTruco(Jugador2, CantoTruco.Retruco);
