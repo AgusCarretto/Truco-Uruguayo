@@ -132,7 +132,7 @@ public class RondaTests
     public void JugarCarta_RondaYaFinalizada_Arroja()
     {
         var ronda = NuevaRondaConMazoFijo(
-            new[] { new Carta(1, Palo.Espada), new Carta(7, Palo.Espada), new Carta(6, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(7, Palo.Espada), new Carta(6, Palo.Basto) },
             new[] { new Carta(4, Palo.Copa), new Carta(5, Palo.Copa), new Carta(6, Palo.Basto) },
             puntosObjetivo: 1);
 
@@ -316,7 +316,7 @@ public class RondaTests
     {
         var ronda = NuevaRondaConMazoFijo(
             new[] { new Carta(7, Palo.Copa), new Carta(4, Palo.Copa), new Carta(12, Palo.Basto) },
-            new[] { new Carta(7, Palo.Basto), new Carta(3, Palo.Basto), new Carta(11, Palo.Basto) },
+            new[] { new Carta(7, Palo.Basto), new Carta(3, Palo.Basto), new Carta(11, Palo.Espada) },
             puntosObjetivo: 1);
 
         ronda.JugarCarta(Jugador1, new Carta(7, Palo.Copa));
@@ -395,7 +395,7 @@ public class RondaTests
     {
         var ronda = NuevaRondaConMazoFijo(
             new[] { new Carta(7, Palo.Copa), new Carta(4, Palo.Copa), new Carta(12, Palo.Basto) },
-            new[] { new Carta(7, Palo.Basto), new Carta(3, Palo.Basto), new Carta(11, Palo.Basto) },
+            new[] { new Carta(7, Palo.Basto), new Carta(3, Palo.Basto), new Carta(11, Palo.Espada) },
             puntosObjetivo: 1);
 
         ronda.JugarCarta(Jugador1, new Carta(7, Palo.Copa));
@@ -1015,6 +1015,58 @@ public class RondaTests
         var excepcion = Record.Exception(() => ronda.CantarFlor(Jugador2));
 
         Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
+    [Fact]
+    public void CantarEnvido_ConFlorSinCantar_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        var excepcion = Record.Exception(() => ronda.CantarEnvido(Jugador1, Canto.Envido));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal("¡Tenés Flor! Debés cantarla antes del envido.", excepcion.Message);
+    }
+
+    [Fact]
+    public void CantarEnvido_DespuesDeCantarFlor_YaNoBloquea()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        ronda.CantarFlor(Jugador1);
+        var excepcion = Record.Exception(() => ronda.CantarEnvido(Jugador1, Canto.Envido));
+
+        Assert.Null(excepcion);
+    }
+
+    [Fact]
+    public void JugarCarta_ConFlorSinCantar_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        var excepcion = Record.Exception(() => ronda.JugarCarta(Jugador1, new Carta(2, Palo.Oro)));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal("¡Tenés Flor! Debés cantarla antes de jugar una carta.", excepcion.Message);
+    }
+
+    [Fact]
+    public void JugarCarta_DespuesDeCantarFlor_YaNoBloquea()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        ronda.CantarFlor(Jugador1);
+        var excepcion = Record.Exception(() => ronda.JugarCarta(Jugador1, new Carta(2, Palo.Oro)));
+
+        Assert.Null(excepcion);
     }
 
     private static Ronda NuevaRondaConMazoFijo(IEnumerable<Carta> manoJugador1, IEnumerable<Carta> manoJugador2, int puntosObjetivo = 15) =>

@@ -115,6 +115,11 @@ public class Ronda
             throw new InvalidOperationException("Solo podés cantar envido en tu turno.");
         }
 
+        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
+        {
+            throw new InvalidOperationException("¡Tenés Flor! Debés cantarla antes del envido.");
+        }
+
         if (Estado == EstadoRonda.RespondiendoCanto || Estado == EstadoRonda.RespondiendoTruco)
         {
             throw new InvalidOperationException("Hay un canto pendiente de respuesta.");
@@ -383,6 +388,11 @@ public class Ronda
         if (jugadorId != TurnoActual)
         {
             throw new InvalidOperationException("No es el turno de este jugador.");
+        }
+
+        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
+        {
+            throw new InvalidOperationException("¡Tenés Flor! Debés cantarla antes de jugar una carta.");
         }
 
         var mano = jugadorId == Jugador1Id ? _manoJugador1 : _manoJugador2;
