@@ -136,7 +136,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await Context.Channel.SendFileAsync(
             streamMesa,
             "mesa.png",
-            text: $"{GenerarTextoMarcador(ronda)}🎉 ¡Partida a {puntos} puntos iniciada por 🪙 {apuesta} monedas! 🃏 La muestra es **{ronda.Muestra}**. 👉 Turno de <@{retadorId}>.",
+            text: $"{GenerarTextoMarcador(ronda)}🎉 ¡Partida a {puntos} puntos iniciada por 🪙 {apuesta} monedas! 🃏 La muestra es **{ronda.Muestra}**.",
             components: ConstruirBotonesDeAccion(ronda));
     }
 
@@ -346,7 +346,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             .Build();
 
         await Context.Channel.SendMessageAsync(
-            $"🎲 ¡<@{Context.User.Id}> cantó {nombreEnvido}! Turno de <@{ronda.TurnoActual}> de responder.",
+            $"{GenerarTextoMarcador(ronda)}🎲 ¡<@{Context.User.Id}> cantó {nombreEnvido}!",
             components: botones);
         await DeferAsync();
     }
@@ -375,7 +375,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         if (siguienteCanto is null)
         {
-            await RespondAsync("⚠️ No hay más para subir.", ephemeral: true);
+            await RespondAsync("⚠️ Ya estas jugando vale 4.", ephemeral: true);
             return;
         }
 
@@ -402,7 +402,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         await Context.Channel.SendMessageAsync(
-            $"🔥 <@{Context.User.Id}> gritó **{NombreCantoTruco(canto)}**!",
+            $"{GenerarTextoMarcador(ronda)}🔥 <@{Context.User.Id}> gritó **{NombreCantoTruco(canto)}**!",
             components: botones.Build());
         await DeferAsync();
     }
@@ -541,7 +541,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         else
         {
             await Context.Channel.SendMessageAsync(
-                $"{GenerarTextoMarcador(ronda)}🔥 ¡Truco por {ronda.ValorTrucoActual}! 👉 Turno de <@{ronda.TurnoActual}>.",
+                $"{GenerarTextoMarcador(ronda)}🔥 ¡Truco por {ronda.ValorTrucoActual}!",
                 components: ConstruirBotonesDeAccion(ronda));
         }
 
@@ -554,7 +554,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await Context.Channel.SendFileAsync(
             streamMesaNueva,
             "mesa.png",
-            text: $"{GenerarTextoMarcador(ronda)}🔄 Nueva ronda, reparte las cartas... La nueva muestra es **{ronda.Muestra}**. 👉 Turno de <@{ronda.TurnoActual}>.",
+            text: $"{GenerarTextoMarcador(ronda)}🔄 Nueva ronda, reparte las cartas... La nueva muestra es **{ronda.Muestra}**.",
             components: ConstruirBotonesDeAccion(ronda));
     }
 
@@ -645,7 +645,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
     {
         var j1 = $"<@{ronda.Jugador1Id}>: {ronda.PuntosJugador1} {GenerarPalitos(ronda.PuntosJugador1)}";
         var j2 = $"<@{ronda.Jugador2Id}>: {ronda.PuntosJugador2} {GenerarPalitos(ronda.PuntosJugador2)}";
-        return $"**MARCADOR** (A {ronda.PuntosObjetivo})\n{j1}\n{j2}\n\n";
+        var turno = ronda.Fase == FaseRonda.Finalizada ? "" : $"👉 Turno de <@{ronda.TurnoActual}>\n";
+        return $"**MARCADOR** (A {ronda.PuntosObjetivo})\n{j1}\n{j2}\n{turno}\n";
     }
 
     private static CantoTruco SiguienteCantoTruco(int valorTrucoActual) => valorTrucoActual switch
