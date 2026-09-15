@@ -304,10 +304,19 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
                 return;
             }
 
+            if (ronda.Estado == EstadoRonda.RespondiendoFlor)
+            {
+                await Context.Channel.SendMessageAsync(
+                    $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó Flor! Pero huele a jardín... <@{ronda.TurnoActual}>, ¿qué respondés?",
+                    components: ConstruirBotonesDeAccion(ronda));
+                await DeferAsync();
+                return;
+            }
+
             var partidaTerminada = ronda.Fase == FaseRonda.Finalizada;
             var textoFlor = partidaTerminada
                 ? $"🌸 ¡<@{Context.User.Id}> cantó FLOR ({ronda.CalcularPuntosFlor(Context.User.Id)} puntos)!"
-                : $"🌸 ¡<@{Context.User.Id}> cantó FLOR! (+3 puntos)";
+                : $"🌸 ¡<@{Context.User.Id}> cantó Flor (3 pts)! El Envido se anula. Turno de jugar carta para <@{ronda.TurnoActual}>.";
 
             if (partidaTerminada)
             {
@@ -351,6 +360,103 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await Context.Channel.SendMessageAsync(
             $"{GenerarTextoMarcador(ronda)}🎲 ¡<@{Context.User.Id}> cantó {nombreEnvido}!",
             components: botones);
+        await DeferAsync();
+    }
+
+    [ComponentInteraction("respuesta_flor")]
+    public async Task RespuestaFlor(string[] opciones)
+    {
+        if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
+        {
+            await RespondAsync("❌ No hay una partida activa en este canal.", ephemeral: true);
+            return;
+        }
+
+        var puntosJugador1Antes = ronda.PuntosJugador1;
+        var puntosJugador2Antes = ronda.PuntosJugador2;
+
+        try
+        {
+            ronda.ResponderFlor(Context.User.Id, opciones[0]);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
+            return;
+        }
+
+        if (ronda.Estado == EstadoRonda.RespondiendoContraFlor)
+        {
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}🔥 ¡<@{Context.User.Id}> retrucó la Flor! Turno de <@{ronda.TurnoActual}>.",
+                components: ConstruirBotonesDeAccion(ronda));
+            await DeferAsync();
+            return;
+        }
+
+        var deltaJugador1 = ronda.PuntosJugador1 - puntosJugador1Antes;
+        var ganador = deltaJugador1 > 0 ? ronda.Jugador1Id : ronda.Jugador2Id;
+        var puntosGanados = deltaJugador1 > 0 ? deltaJugador1 : ronda.PuntosJugador2 - puntosJugador2Antes;
+        var textoResultado = $"🌸 ¡<@{ganador}> gana el cruce de Flores y se lleva {puntosGanados} puntos!";
+
+        if (ronda.Fase == FaseRonda.Finalizada)
+        {
+            await Context.Channel.SendMessageAsync($"{GenerarTextoMarcador(ronda)}{textoResultado}");
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else
+        {
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}{textoResultado}",
+                components: ConstruirBotonesDeAccion(ronda));
+        }
+
+        await DeferAsync();
+    }
+
+    [ComponentInteraction("contraflor_*")]
+    public async Task ResponderContraFlor(string accion)
+    {
+        if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
+        {
+            await RespondAsync("❌ No hay una partida activa en este canal.", ephemeral: true);
+            return;
+        }
+
+        var quiere = accion == "quiero";
+        var puntosJugador1Antes = ronda.PuntosJugador1;
+        var puntosJugador2Antes = ronda.PuntosJugador2;
+
+        try
+        {
+            ronda.ResponderContraFlor(Context.User.Id, quiere);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
+            return;
+        }
+
+        var deltaJugador1 = ronda.PuntosJugador1 - puntosJugador1Antes;
+        var ganador = deltaJugador1 > 0 ? ronda.Jugador1Id : ronda.Jugador2Id;
+        var puntosGanados = deltaJugador1 > 0 ? deltaJugador1 : ronda.PuntosJugador2 - puntosJugador2Antes;
+
+        var textoResultado = quiere
+            ? $"🌸 ¡<@{ganador}> gana el cruce de Flores y se lleva {puntosGanados} puntos!"
+            : $"❌ <@{Context.User.Id}> no quiso. <@{ganador}> se lleva {puntosGanados} puntos de Flor.";
+
+        if (ronda.Fase == FaseRonda.Finalizada)
+        {
+            await Context.Channel.SendMessageAsync($"{GenerarTextoMarcador(ronda)}{textoResultado}");
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else
+        {
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}{textoResultado}",
+                components: ConstruirBotonesDeAccion(ronda));
+        }
+
         await DeferAsync();
     }
 
@@ -606,7 +712,23 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         var botones = new ComponentBuilder()
             .WithButton("🃏 Ver mis cartas", "ver_mano", ButtonStyle.Primary, row: 0);
 
-        if (ronda.Estado == EstadoRonda.EsperandoEnvido || ronda.Estado == EstadoRonda.JugandoCartas)
+        if (ronda.Estado == EstadoRonda.RespondiendoFlor)
+        {
+            var selectFlor = new SelectMenuBuilder()
+                .WithCustomId("respuesta_flor")
+                .WithPlaceholder("🌸 Responder a la Flor...")
+                .AddOption("🌸 La mía es Flor", "la_mia_es_flor")
+                .AddOption("🔥 Con Flor Envido", "con_flor_envido")
+                .AddOption("☠️ Contra Flor al Resto", "contra_flor_al_resto");
+
+            botones.WithSelectMenu(selectFlor, row: 1);
+        }
+        else if (ronda.Estado == EstadoRonda.RespondiendoContraFlor)
+        {
+            botones.WithButton("✅ Quiero", "contraflor_quiero", ButtonStyle.Success, row: 1);
+            botones.WithButton("❌ No Quiero", "contraflor_noquiero", ButtonStyle.Danger, row: 1);
+        }
+        else if (ronda.Estado == EstadoRonda.EsperandoEnvido || ronda.Estado == EstadoRonda.JugandoCartas)
         {
             if (ronda.PuedeCantarEnvido(ronda.TurnoActual))
             {
