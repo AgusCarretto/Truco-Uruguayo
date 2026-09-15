@@ -20,7 +20,7 @@ public class UsuarioRepository
         await using var conexion = new NpgsqlConnection(_connectionString);
 
         const string sql = """
-            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel
+            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado
             FROM usuarios
             WHERE id = @Id
             """;
@@ -35,7 +35,7 @@ public class UsuarioRepository
         const string sql = """
             INSERT INTO usuarios (id, nombre, monedas, victorias, derrotas, xp)
             VALUES (@Id, @Nombre, @Monedas, 0, 0, 0)
-            RETURNING id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel
+            RETURNING id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado
             """;
 
         return await conexion.QuerySingleAsync<Usuario>(
@@ -77,7 +77,7 @@ public class UsuarioRepository
         var columna = orden == "xp" ? "xp" : "monedas";
 
         var sql = $"""
-            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel
+            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado
             FROM usuarios
             ORDER BY {columna} DESC
             LIMIT @Limite

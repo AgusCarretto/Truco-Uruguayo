@@ -21,10 +21,12 @@ public class UsuarioRepositoryTests
 
         Assert.Equal(1000, registrado.Monedas);
         Assert.Equal(1, registrado.Nivel);
+        Assert.Null(registrado.TituloEquipado);
         Assert.NotNull(consultado);
         Assert.Equal(1000, consultado!.Monedas);
         Assert.Equal("prueba", consultado.Nombre);
         Assert.Equal(1, consultado.Nivel);
+        Assert.Null(consultado.TituloEquipado);
     }
 
     [Fact]

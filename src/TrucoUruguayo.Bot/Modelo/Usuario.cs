@@ -9,4 +9,5 @@ public class Usuario
     public int Derrotas { get; set; }
     public int Xp { get; set; }
     public int Nivel { get; set; }
+    public string? TituloEquipado { get; set; }
 }

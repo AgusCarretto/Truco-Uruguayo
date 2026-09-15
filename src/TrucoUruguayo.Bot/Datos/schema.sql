@@ -5,12 +5,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
     victorias INTEGER NOT NULL DEFAULT 0,
     derrotas INTEGER NOT NULL DEFAULT 0,
     xp INTEGER NOT NULL DEFAULT 0,
-    nivel INTEGER NOT NULL DEFAULT 1
+    nivel INTEGER NOT NULL DEFAULT 1,
+    titulo_equipado VARCHAR(100) DEFAULT NULL
 );
 
--- No hay runner de migraciones: este ALTER idempotente hace que volver a correr
--- schema.sql contra una base ya existente agregue la columna sin romper nada.
+-- No hay runner de migraciones: estos ALTER idempotentes hacen que volver a correr
+-- schema.sql contra una base ya existente agregue las columnas sin romper nada.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nivel INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS titulo_equipado VARCHAR(100) DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS recompensas_diarias (
     usuario_id BIGINT PRIMARY KEY,
