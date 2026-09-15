@@ -20,9 +20,11 @@ public class UsuarioRepositoryTests
         var consultado = await repositorio.ObtenerUsuarioAsync(id);
 
         Assert.Equal(1000, registrado.Monedas);
+        Assert.Equal(1, registrado.Nivel);
         Assert.NotNull(consultado);
         Assert.Equal(1000, consultado!.Monedas);
         Assert.Equal("prueba", consultado.Nombre);
+        Assert.Equal(1, consultado.Nivel);
     }
 
     [Fact]

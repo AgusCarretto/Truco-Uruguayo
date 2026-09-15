@@ -8,4 +8,5 @@ public class Usuario
     public int Victorias { get; set; }
     public int Derrotas { get; set; }
     public int Xp { get; set; }
+    public int Nivel { get; set; }
 }
