@@ -40,6 +40,44 @@ public class UsuarioRepositoryTests
     }
 
     [Fact]
+    public async Task EquiparTituloAsync_ConNivelSuficiente_EquipaYDevuelveTrue()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+        await repositorio.SumarExpAsync(usuario.Id, 1000); // llega a Nivel 5
+
+        var exito = await repositorio.EquiparTituloAsync(usuario.Id, "Orejeador");
+
+        Assert.True(exito);
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal("Orejeador", actualizado!.TituloEquipado);
+    }
+
+    [Fact]
+    public async Task EquiparTituloAsync_ConNivelInsuficiente_NoEquipaYDevuelveFalse()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var exito = await repositorio.EquiparTituloAsync(usuario.Id, "Orejeador");
+
+        Assert.False(exito);
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Null(actualizado!.TituloEquipado);
+    }
+
+    [Fact]
+    public async Task EquiparTituloAsync_TituloInexistente_DevuelveFalse()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var exito = await repositorio.EquiparTituloAsync(usuario.Id, "Titulo Inventado");
+
+        Assert.False(exito);
+    }
+
+    [Fact]
     public async Task SumarExpAsync_SinCruzarUmbral_NoSubeDeNivel()
     {
         var repositorio = new UsuarioRepository(_connectionString);

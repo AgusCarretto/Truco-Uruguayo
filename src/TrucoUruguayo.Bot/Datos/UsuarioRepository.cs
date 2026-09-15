@@ -208,4 +208,32 @@ public class UsuarioRepository
         public int Xp { get; set; }
         public int Nivel { get; set; }
     }
+
+    public async Task<bool> EquiparTituloAsync(ulong discordId, string titulo)
+    {
+        if (!ConstantesTitulos.TitulosPorNivel.ContainsValue(titulo))
+        {
+            return false;
+        }
+
+        var usuario = await ObtenerUsuarioAsync(discordId);
+        if (usuario is null)
+        {
+            return false;
+        }
+
+        var nivelRequerido = ConstantesTitulos.TitulosPorNivel.First(kv => kv.Value == titulo).Key;
+        if (usuario.Nivel < nivelRequerido)
+        {
+            return false;
+        }
+
+        await using var conexion = new NpgsqlConnection(_connectionString);
+
+        const string sql = "UPDATE usuarios SET titulo_equipado = @Titulo WHERE id = @Id";
+
+        await conexion.ExecuteAsync(sql, new { Titulo = titulo, Id = (long)discordId });
+
+        return true;
+    }
 }
