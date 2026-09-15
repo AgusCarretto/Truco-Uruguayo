@@ -37,6 +37,54 @@ public class UsuarioRepositoryTests
         Assert.Null(consultado);
     }
 
+    [Fact]
+    public async Task SumarExpAsync_SinCruzarUmbral_NoSubeDeNivel()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var (subioDeNivel, nuevoNivel) = await repositorio.SumarExpAsync(usuario.Id, 50);
+
+        Assert.False(subioDeNivel);
+        Assert.Equal(1, nuevoNivel);
+
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal(50, actualizado!.Xp);
+        Assert.Equal(1, actualizado.Nivel);
+    }
+
+    [Fact]
+    public async Task SumarExpAsync_CruzaUnUmbral_SubeDeNivel()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var (subioDeNivel, nuevoNivel) = await repositorio.SumarExpAsync(usuario.Id, 150);
+
+        Assert.True(subioDeNivel);
+        Assert.Equal(2, nuevoNivel);
+
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal(150, actualizado!.Xp);
+        Assert.Equal(2, actualizado.Nivel);
+    }
+
+    [Fact]
+    public async Task SumarExpAsync_CruzaVariosUmbrales_SubeVariosNiveles()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var (subioDeNivel, nuevoNivel) = await repositorio.SumarExpAsync(usuario.Id, 500);
+
+        Assert.True(subioDeNivel);
+        Assert.Equal(3, nuevoNivel);
+
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal(500, actualizado!.Xp);
+        Assert.Equal(3, actualizado.Nivel);
+    }
+
     [Theory]
     [InlineData(500, 1500)]
     [InlineData(-300, 700)]

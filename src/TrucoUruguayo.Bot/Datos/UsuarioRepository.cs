@@ -166,4 +166,46 @@ public class UsuarioRepository
 
         return await conexion.QueryAsync<PartidaHistorico>(sql, new { Id = (long)discordId, Limite = limite });
     }
+
+    public async Task<(bool SubioDeNivel, int NuevoNivel)> SumarExpAsync(ulong discordId, int cantidadExp)
+    {
+        await using var conexion = new NpgsqlConnection(_connectionString);
+        await conexion.OpenAsync();
+        await using var transaccion = await conexion.BeginTransactionAsync();
+
+        var id = (long)discordId;
+
+        const string sqlSeleccionar = """
+            SELECT xp AS Xp, nivel AS Nivel
+            FROM usuarios
+            WHERE id = @Id
+            FOR UPDATE
+            """;
+
+        var actual = await conexion.QuerySingleAsync<XpYNivel>(
+            new CommandDefinition(sqlSeleccionar, new { Id = id }, transaccion));
+
+        var nuevoXp = actual.Xp + cantidadExp;
+        var nuevoNivel = actual.Nivel;
+
+        while (nuevoXp >= NivelCalculadora.XpParaAlcanzarNivel(nuevoNivel + 1))
+        {
+            nuevoNivel++;
+        }
+
+        const string sqlActualizar = "UPDATE usuarios SET xp = @Xp, nivel = @Nivel WHERE id = @Id";
+
+        await conexion.ExecuteAsync(
+            new CommandDefinition(sqlActualizar, new { Xp = nuevoXp, Nivel = nuevoNivel, Id = id }, transaccion));
+
+        await transaccion.CommitAsync();
+
+        return (nuevoNivel > actual.Nivel, nuevoNivel);
+    }
+
+    private sealed class XpYNivel
+    {
+        public int Xp { get; set; }
+        public int Nivel { get; set; }
+    }
 }
