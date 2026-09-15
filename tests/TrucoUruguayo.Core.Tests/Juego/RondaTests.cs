@@ -725,7 +725,11 @@ public class RondaTests
     [Fact]
     public void JugarCarta_ActualizaUltimaActividad()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        // Mano fija sin Flor: con reparto al azar, esta prueba podia tocarle por casualidad
+        // una mano con Flor a quien juega y quedar bloqueada por el chequeo nuevo.
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         var antes = DateTime.UtcNow;
 
         var quienJuega = ronda.TurnoActual;
@@ -738,7 +742,10 @@ public class RondaTests
     [Fact]
     public void CantarEnvido_ActualizaUltimaActividad()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        // Mano fija sin Flor (ver comentario de JugarCarta_ActualizaUltimaActividad).
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         var antes = DateTime.UtcNow;
 
         ronda.CantarEnvido(ronda.TurnoActual, Canto.Envido);
@@ -749,7 +756,10 @@ public class RondaTests
     [Fact]
     public void ResponderEnvido_ActualizaUltimaActividad()
     {
-        var ronda = new Ronda(Jugador1, Jugador2, 15);
+        // Mano fija sin Flor (ver comentario de JugarCarta_ActualizaUltimaActividad).
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
         var quienCanta = ronda.TurnoActual;
         ronda.CantarEnvido(quienCanta, Canto.Envido);
         var quienResponde = quienCanta == Jugador1 ? Jugador2 : Jugador1;
