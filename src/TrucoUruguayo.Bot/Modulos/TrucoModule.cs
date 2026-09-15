@@ -24,7 +24,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("truco", "Desafia a otro jugador a una partida de Truco")]
     public async Task TrucoAsync(
         [Summary("usuario", "A quien desafias")] IUser usuario,
-        [Summary("apuesta", "Cuantas monedas se apuestan")] int apuesta)
+        [Summary("apuesta", "Cuantas monedas se apuestan")] int apuesta,
+        [Summary("puntos", "A cuantos puntos se juega")]
+        [Choice("10 Puntos", 10), Choice("15 Puntos", 15), Choice("20 Puntos", 20)] int puntos)
     {
         var retadorId = Context.User.Id;
         var retadoId = usuario.Id;
@@ -81,16 +83,16 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var componentes = new ComponentBuilder()
-            .WithButton("✅ Aceptar", $"reto_aceptar_{retadorId}_{retadoId}_{apuesta}", ButtonStyle.Success)
+            .WithButton("✅ Aceptar", $"reto_aceptar_{retadorId}_{retadoId}_{apuesta}_{puntos}", ButtonStyle.Success)
             .Build();
 
         await RespondAsync(
-            $"⚔️ {usuario.Mention}, {Context.User.Mention} te desafía a una partida de Truco por 🪙 {apuesta} monedas!",
+            $"⚔️ {usuario.Mention}, {Context.User.Mention} te desafía a una partida de Truco a {puntos} puntos por 🪙 {apuesta} monedas!",
             components: componentes);
     }
 
-    [ComponentInteraction("reto_aceptar_*_*_*")]
-    public async Task AceptarReto(ulong retadorId, ulong retadoId, int apuesta)
+    [ComponentInteraction("reto_aceptar_*_*_*_*")]
+    public async Task AceptarReto(ulong retadorId, ulong retadoId, int apuesta, int puntos)
     {
         if (Context.User.Id != retadoId)
         {
@@ -108,17 +110,17 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await _usuarioRepository.ActualizarMonedasAsync(retadorId, -apuesta);
         await _usuarioRepository.ActualizarMonedasAsync(retadoId, -apuesta);
 
-        _gestorPartidas.IniciarPartida(Context.Channel.Id, retadorId, retadoId);
+        _gestorPartidas.IniciarPartida(Context.Channel.Id, retadorId, retadoId, puntos);
         _gestorPartidas.ApuestasActivas[Context.Channel.Id] = apuesta;
         var ronda = _gestorPartidas.ObtenerPartidaPorUsuario(retadoId)!;
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(mensaje => mensaje.Components = new ComponentBuilder().Build());
 
-        await using var streamMesa = await _generadorImagenes.GenerarMesaAsync(ronda.Muestra);
+        await using var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(ronda.Muestra, null, null);
         await Context.Channel.SendFileAsync(
             streamMesa,
             "mesa.png",
-            text: $"🎉 ¡Partida iniciada por 🪙 {apuesta} monedas! 🃏 La muestra es **{ronda.Muestra}**. 👉 Turno de <@{retadorId}>.",
+            text: $"{GenerarTextoMarcador(ronda)}🎉 ¡Partida a {puntos} puntos iniciada por 🪙 {apuesta} monedas! 🃏 La muestra es **{ronda.Muestra}**. 👉 Turno de <@{retadorId}>.",
             components: ConstruirBotonesDeAccion(ronda));
     }
 
@@ -154,6 +156,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             componentes.WithButton(mano[i].ToString(), $"jugar_carta_{i}", ButtonStyle.Primary);
         }
 
+        componentes.WithButton("📊 Orden de las cartas", "ayuda_cartas", ButtonStyle.Secondary, row: 4);
+
         await using var streamMano = await _generadorImagenes.GenerarManoAsync(mano);
         await RespondWithFileAsync(streamMano, "mano.png", components: componentes.Build(), ephemeral: true);
     }
@@ -175,32 +179,64 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         var mano = Context.User.Id == ronda.Jugador1Id ? ronda.ManoJugador1 : ronda.ManoJugador2;
         var carta = mano[index];
+        var jugadorQueJuega = Context.User.Id;
         var faseAntes = ronda.Fase;
+        var muestraAntes = ronda.Muestra;
 
-        ronda.JugarCarta(Context.User.Id, carta);
+        ronda.JugarCarta(jugadorQueJuega, carta);
 
-        if (ronda.Fase == FaseRonda.Finalizada)
+        var seResolvioLaBaza = ronda.Fase != faseAntes;
+        var arrancoManoNueva = ronda.Muestra != muestraAntes;
+        var partidaTerminada = ronda.Fase == FaseRonda.Finalizada;
+
+        // Paso A (siempre): la mesa tal cual queda justo despues de que esta carta cae. Si
+        // la baza se resolvio, usamos UltimaCartaMesaJ1/J2 (Ronda las guarda ANTES de
+        // limpiar/repartir de nuevo) en vez de las listas acumuladas: esas pueden haber
+        // quedado vacias si con esta jugada ya arranco la mano siguiente.
+        Carta? jugada1Mesa;
+        Carta? jugada2Mesa;
+        if (seResolvioLaBaza)
         {
-            await FinalizarPartidaYPagarAsync(ronda);
-        }
-        else if (ronda.Fase != faseAntes)
-        {
-            await Context.Channel.SendMessageAsync(
-                $"🏁 Mano terminada. 🏆 Ganador de la mano: <@{ronda.TurnoActual}>. 👉 Turno de <@{ronda.TurnoActual}>.",
-                components: ConstruirBotonesDeAccion(ronda));
+            jugada1Mesa = ronda.UltimaCartaMesaJ1;
+            jugada2Mesa = ronda.UltimaCartaMesaJ2;
         }
         else
         {
-            await Context.Channel.SendMessageAsync(
-                $"🎴 <@{Context.User.Id}> jugó **{carta}**. 👉 Turno de <@{ronda.TurnoActual}>.",
-                components: ConstruirBotonesDeAccion(ronda));
+            jugada1Mesa = jugadorQueJuega == ronda.Jugador1Id ? carta : null;
+            jugada2Mesa = jugadorQueJuega == ronda.Jugador2Id ? carta : null;
+        }
+
+        var textoJugada = $"🎴 Jugador <@{jugadorQueJuega}> jugó **{carta}**.";
+        if (seResolvioLaBaza && ronda.GanadorUltimaMano is not null)
+        {
+            textoJugada += $" ¡<@{ronda.GanadorUltimaMano}> ganó la mano!";
+        }
+
+        await using (var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(muestraAntes, jugada1Mesa, jugada2Mesa))
+        {
+            await Context.Channel.SendFileAsync(
+                streamMesa,
+                "mesa.png",
+                text: $"{GenerarTextoMarcador(ronda)}{textoJugada}",
+                components: (arrancoManoNueva || partidaTerminada) ? null : ConstruirBotonesDeAccion(ronda));
+        }
+
+        if (partidaTerminada)
+        {
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else if (arrancoManoNueva)
+        {
+            // Paso B: se gano la mano anterior pero nadie llego al PuntosObjetivo, asi que
+            // ya arranco la mano siguiente con cartas y muestra nuevas.
+            await EnviarNuevaRondaAsync(ronda);
         }
 
         await DeferAsync();
     }
 
-    [ComponentInteraction("cantar_envido")]
-    public async Task CantarEnvidoAsync()
+    [ComponentInteraction("seleccionar_envido")]
+    public async Task SeleccionarEnvido(string[] opciones)
     {
         if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
         {
@@ -208,9 +244,17 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        var (tipoEnvido, nombreEnvido) = opciones[0] switch
+        {
+            "envido" => (Canto.Envido, "Envido"),
+            "real_envido" => (Canto.RealEnvido, "Real Envido"),
+            "falta_envido" => (Canto.FaltaEnvido, "Falta Envido"),
+            _ => throw new ArgumentOutOfRangeException(nameof(opciones), "Opcion de envido desconocida."),
+        };
+
         try
         {
-            ronda.CantarEnvido(Context.User.Id, Canto.Envido);
+            ronda.CantarEnvido(Context.User.Id, tipoEnvido);
         }
         catch (InvalidOperationException ex)
         {
@@ -223,7 +267,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             .WithButton("❌ No Quiero", "resp_envido_noquiero", ButtonStyle.Danger)
             .Build();
 
-        await Context.Channel.SendMessageAsync($"🎲 <@{Context.User.Id}> tocó Envido!", components: botones);
+        await Context.Channel.SendMessageAsync(
+            $"🎲 ¡<@{Context.User.Id}> cantó {nombreEnvido}! Turno de <@{ronda.TurnoActual}> de responder.",
+            components: botones);
         await DeferAsync();
     }
 
@@ -242,7 +288,20 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        var canto = SiguienteCantoTruco(ronda.ValorTrucoActual);
+        // Si ya hay un truco pendiente de respuesta, este click es una escalada "tipo tenis"
+        // (ej. el rival responde Retruco directo en vez de Quiero) — el siguiente nivel se
+        // calcula sobre lo pendiente, no sobre ValorTrucoActual (que todavia no se actualizo).
+        var siguienteCanto = ronda.CantoTrucoPendiente is not null
+            ? SiguienteEscalada(ronda.CantoTrucoPendiente.Value)
+            : SiguienteCantoTruco(ronda.ValorTrucoActual);
+
+        if (siguienteCanto is null)
+        {
+            await RespondAsync("⚠️ No hay más para subir.", ephemeral: true);
+            return;
+        }
+
+        var canto = siguienteCanto.Value;
 
         try
         {
@@ -295,7 +354,15 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        await FinalizarPartidaYPagarAsync(ronda);
+        if (ronda.Fase == FaseRonda.Finalizada)
+        {
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else
+        {
+            await EnviarNuevaRondaAsync(ronda);
+        }
+
         await DeferAsync();
     }
 
@@ -334,9 +401,22 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             ? $"🎲 <@{ronda.Jugador1Id}> se lleva {puntosGanadosJugador1} puntos de envido."
             : $"🎲 <@{ronda.Jugador2Id}> se lleva {ronda.PuntosJugador2} puntos de envido.";
 
-        await Context.Channel.SendMessageAsync(
-            $"{mensajePuntos} 👉 Turno de <@{ronda.TurnoActual}>.",
-            components: ConstruirBotonesDeAccion(ronda));
+        var puntos1 = ronda.CalcularEnvido(ronda.Jugador1Id);
+        var puntos2 = ronda.CalcularEnvido(ronda.Jugador2Id);
+        mensajePuntos += $" Tantos: <@{ronda.Jugador1Id}> {puntos1} | <@{ronda.Jugador2Id}> {puntos2}.";
+
+        if (ronda.Fase == FaseRonda.Finalizada)
+        {
+            await Context.Channel.SendMessageAsync($"{GenerarTextoMarcador(ronda)}{mensajePuntos}");
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else
+        {
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}{mensajePuntos} 👉 Turno de <@{ronda.TurnoActual}>.",
+                components: ConstruirBotonesDeAccion(ronda));
+        }
+
         await DeferAsync();
     }
 
@@ -358,6 +438,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var respuesta = accion == "quiero" ? RespuestaCanto.Quiero : RespuestaCanto.NoQuiero;
+        var muestraAntes = ronda.Muestra;
 
         try
         {
@@ -371,19 +452,35 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         if (ronda.Fase == FaseRonda.Finalizada)
         {
-            await FinalizarPartidaYPagarAsync(ronda);
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else if (ronda.Muestra != muestraAntes)
+        {
+            // Se rechazo el truco: se gano esta mano pero nadie llego al PuntosObjetivo,
+            // asi que ya arranco la mano siguiente con cartas nuevas.
+            await EnviarNuevaRondaAsync(ronda);
         }
         else
         {
             await Context.Channel.SendMessageAsync(
-                $"🔥 ¡Truco por {ronda.ValorTrucoActual}! 👉 Turno de <@{ronda.TurnoActual}>.",
+                $"{GenerarTextoMarcador(ronda)}🔥 ¡Truco por {ronda.ValorTrucoActual}! 👉 Turno de <@{ronda.TurnoActual}>.",
                 components: ConstruirBotonesDeAccion(ronda));
         }
 
         await DeferAsync();
     }
 
-    private async Task FinalizarPartidaYPagarAsync(Ronda ronda)
+    private async Task EnviarNuevaRondaAsync(Ronda ronda)
+    {
+        await using var streamMesaNueva = await _generadorImagenes.GenerarMesaActualAsync(ronda.Muestra, null, null);
+        await Context.Channel.SendFileAsync(
+            streamMesaNueva,
+            "mesa.png",
+            text: $"{GenerarTextoMarcador(ronda)}🔄 Nueva ronda, reparte las cartas... La nueva muestra es **{ronda.Muestra}**. 👉 Turno de <@{ronda.TurnoActual}>.",
+            components: ConstruirBotonesDeAccion(ronda));
+    }
+
+    private async Task FinalizarYAnunciarRonda(Ronda ronda)
     {
         var ganadorId = ronda.GanadorRonda!.Value;
         var perdedorId = ganadorId == ronda.Jugador1Id ? ronda.Jugador2Id : ronda.Jugador1Id;
@@ -404,13 +501,21 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
     private static MessageComponent ConstruirBotonesDeAccion(Ronda ronda)
     {
         var botones = new ComponentBuilder()
-            .WithButton("🃏 Ver mis cartas", "ver_mano", ButtonStyle.Primary);
+            .WithButton("🃏 Ver mis cartas", "ver_mano", ButtonStyle.Primary, row: 0);
 
         if (ronda.Estado == EstadoRonda.EsperandoEnvido || ronda.Estado == EstadoRonda.JugandoCartas)
         {
-            if (ronda.Estado == EstadoRonda.EsperandoEnvido)
+            if (ronda.PuedeCantarEnvido(ronda.TurnoActual))
             {
-                botones.WithButton("🎲 Tocar Envido", "cantar_envido", ButtonStyle.Secondary);
+                // Los select menus de Discord necesitan su propia fila (no pueden compartirla con botones).
+                var selectEnvido = new SelectMenuBuilder()
+                    .WithCustomId("seleccionar_envido")
+                    .WithPlaceholder("🎲 Cantar Envido...")
+                    .AddOption("Envido", "envido")
+                    .AddOption("Real Envido", "real_envido")
+                    .AddOption("Falta Envido", "falta_envido");
+
+                botones.WithSelectMenu(selectEnvido, row: 1);
             }
 
             if (ronda.ValorTrucoActual < 4)
@@ -418,13 +523,37 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
                 botones.WithButton(
                     $"🔥 {NombreCantoTruco(SiguienteCantoTruco(ronda.ValorTrucoActual))}",
                     "gritar_truco",
-                    ButtonStyle.Secondary);
+                    ButtonStyle.Secondary,
+                    row: 2);
             }
 
-            botones.WithButton("🏳️ Irse al Mazo", "irse_mazo", ButtonStyle.Danger);
+            botones.WithButton("🏳️ Irse al Mazo", "irse_mazo", ButtonStyle.Danger, row: 2);
         }
 
         return botones.Build();
+    }
+
+    private static string GenerarPalitos(int puntos)
+    {
+        var cuadrados = puntos / 5;
+        var resto = puntos % 5;
+        var palitos = string.Concat(Enumerable.Repeat("[X] ", cuadrados));
+        palitos += resto switch
+        {
+            1 => "|",
+            2 => "||",
+            3 => "|||",
+            4 => "||||",
+            _ => "",
+        };
+        return palitos.TrimEnd();
+    }
+
+    private static string GenerarTextoMarcador(Ronda ronda)
+    {
+        var j1 = $"<@{ronda.Jugador1Id}>: {ronda.PuntosJugador1} {GenerarPalitos(ronda.PuntosJugador1)}";
+        var j2 = $"<@{ronda.Jugador2Id}>: {ronda.PuntosJugador2} {GenerarPalitos(ronda.PuntosJugador2)}";
+        return $"**MARCADOR** (A {ronda.PuntosObjetivo})\n{j1}\n{j2}\n\n";
     }
 
     private static CantoTruco SiguienteCantoTruco(int valorTrucoActual) => valorTrucoActual switch

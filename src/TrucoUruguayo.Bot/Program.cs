@@ -88,8 +88,19 @@ client.InteractionCreated += async interaction =>
     }
 };
 
+var modulosCargados = false;
+
 client.Ready += async () =>
 {
+    // Ready se dispara de nuevo cada vez que el Gateway reconecta (no solo al arrancar),
+    // asi que sin esta guarda AddModulesAsync intenta registrar los mismos modulos dos
+    // veces y explota con "SlashCommandInfo already exists".
+    if (modulosCargados)
+    {
+        return;
+    }
+
+    modulosCargados = true;
     await interactions.AddModulesAsync(Assembly.GetExecutingAssembly(), services);
     await interactions.RegisterCommandsToGuildAsync(guildId);
 };

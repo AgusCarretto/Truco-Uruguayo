@@ -26,7 +26,7 @@ public class GestorPartidas
         _timerAfk = new Timer(ChequearInactividadAsync, null, IntervaloChequeoAfk, IntervaloChequeoAfk);
     }
 
-    public bool IniciarPartida(ulong canalId, ulong jugador1Id, ulong jugador2Id)
+    public bool IniciarPartida(ulong canalId, ulong jugador1Id, ulong jugador2Id, int puntosObjetivo)
     {
         if (!JugadoresActivos.TryAdd(jugador1Id, canalId))
         {
@@ -39,7 +39,7 @@ public class GestorPartidas
             return false;
         }
 
-        PartidasActivas[canalId] = new Ronda(jugador1Id, jugador2Id);
+        PartidasActivas[canalId] = new Ronda(jugador1Id, jugador2Id, puntosObjetivo);
         return true;
     }
 

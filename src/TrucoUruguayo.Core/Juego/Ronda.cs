@@ -17,6 +17,14 @@ public class Ronda
 
     private readonly List<Carta> _manoJugador1;
     private readonly List<Carta> _manoJugador2;
+
+    // El envido se puede cantar/responder incluso despues de que alguno de los dos ya
+    // jugo una carta de esta mano (ver PuedeCantarEnvido). Para eso el calculo del
+    // envido tiene que usar SIEMPRE la mano original de 3 cartas de esta mano, no
+    // _manoJugador1/2 (que van perdiendo cartas a medida que se juegan).
+    private Carta[] _manoOriginalJugador1;
+    private Carta[] _manoOriginalJugador2;
+
     private readonly List<Carta> _cartasJugadasJugador1 = new();
     private readonly List<Carta> _cartasJugadasJugador2 = new();
     private readonly List<ResultadoMano> _resultadosManos = new();
@@ -31,25 +39,33 @@ public class Ronda
 
     public ulong Jugador1Id { get; }
     public ulong Jugador2Id { get; }
-    public Carta Muestra { get; }
+    public Carta Muestra { get; private set; }
     public IReadOnlyList<Carta> ManoJugador1 => _manoJugador1;
     public IReadOnlyList<Carta> ManoJugador2 => _manoJugador2;
     public IReadOnlyList<Carta> CartasJugadasJugador1 => _cartasJugadasJugador1;
     public IReadOnlyList<Carta> CartasJugadasJugador2 => _cartasJugadasJugador2;
-    public GestorDeJerarquia Gestor { get; }
+    public GestorDeJerarquia Gestor { get; private set; }
     public EstadoRonda Estado { get; private set; }
     public FaseRonda Fase { get; private set; }
     public ulong TurnoActual { get; private set; }
+    public ulong JugadorManoId { get; private set; }
     public ulong? GanadorRonda { get; private set; }
     public int PuntosJugador1 { get; private set; }
     public int PuntosJugador2 { get; private set; }
+    public int PuntosObjetivo { get; private set; }
     public ulong? JugadorQueCanto { get; private set; }
-    public int PuntosFaltaEnvido { get; set; } = 30;
+    public Canto? EnvidoActual => _cantoPendiente;
+    public bool EnvidoCantado { get; private set; }
     public int ValorTrucoActual { get; private set; } = 1;
     public ulong? TurnoCantoTruco { get; private set; }
     public ulong? JugadorQueGritoTruco { get; private set; }
+    public CantoTruco? CantoTrucoPendiente => _cantoTrucoPendiente;
+    public DateTime UltimaActividad { get; private set; } = DateTime.UtcNow;
+    public Carta? UltimaCartaMesaJ1 { get; private set; }
+    public Carta? UltimaCartaMesaJ2 { get; private set; }
+    public ulong? GanadorUltimaMano { get; private set; }
 
-    public Ronda(ulong jugador1Id, ulong jugador2Id)
+    public Ronda(ulong jugador1Id, ulong jugador2Id, int puntosObjetivo)
     {
         var mazo = new Mazo();
         mazo.Mezclar();
@@ -60,49 +76,62 @@ public class Ronda
         Muestra = reparto.Muestra;
         _manoJugador1 = reparto.ManoJugador1;
         _manoJugador2 = reparto.ManoJugador2;
+        _manoOriginalJugador1 = _manoJugador1.ToArray();
+        _manoOriginalJugador2 = _manoJugador2.ToArray();
         Gestor = new GestorDeJerarquia(Muestra);
+        PuntosObjetivo = puntosObjetivo;
+        JugadorManoId = Random.Shared.Next(2) == 0 ? jugador1Id : jugador2Id;
 
         Estado = EstadoRonda.EsperandoEnvido;
         Fase = FaseRonda.PrimeraMano;
-        TurnoActual = jugador1Id;
+        TurnoActual = JugadorManoId;
     }
 
-    internal Ronda(ulong jugador1Id, ulong jugador2Id, Carta muestra, List<Carta> manoJugador1, List<Carta> manoJugador2)
+    internal Ronda(ulong jugador1Id, ulong jugador2Id, Carta muestra, List<Carta> manoJugador1, List<Carta> manoJugador2, int puntosObjetivo, ulong jugadorManoId)
     {
         Jugador1Id = jugador1Id;
         Jugador2Id = jugador2Id;
         Muestra = muestra;
         _manoJugador1 = manoJugador1;
         _manoJugador2 = manoJugador2;
+        _manoOriginalJugador1 = _manoJugador1.ToArray();
+        _manoOriginalJugador2 = _manoJugador2.ToArray();
         Gestor = new GestorDeJerarquia(Muestra);
+        PuntosObjetivo = puntosObjetivo;
+        JugadorManoId = jugadorManoId;
 
         Estado = EstadoRonda.EsperandoEnvido;
         Fase = FaseRonda.PrimeraMano;
-        TurnoActual = jugador1Id;
+        TurnoActual = JugadorManoId;
     }
 
     public void CantarEnvido(ulong jugadorId, Canto canto)
     {
         if (jugadorId != TurnoActual)
         {
-            throw new InvalidOperationException("No es el turno de este jugador.");
+            throw new InvalidOperationException("Solo podés cantar envido en tu turno.");
         }
 
-        if (Estado != EstadoRonda.EsperandoEnvido)
+        if (Estado == EstadoRonda.RespondiendoCanto || Estado == EstadoRonda.RespondiendoTruco)
+        {
+            throw new InvalidOperationException("Hay un canto pendiente de respuesta.");
+        }
+
+        // El envido se puede cantar hasta que ese jugador juegue su primera carta de la
+        // mano (aunque el rival ya haya jugado la suya), no solo mientras Estado siga en
+        // EsperandoEnvido a nivel global.
+        if (!PuedeCantarEnvido(jugadorId))
         {
             throw new InvalidOperationException("No se puede cantar un envido en este momento.");
         }
 
-        if (Fase != FaseRonda.PrimeraMano)
-        {
-            throw new InvalidOperationException("Ya no se puede cantar envido.");
-        }
-
+        EnvidoCantado = true;
         _cantoPendiente = canto;
         JugadorQueCanto = jugadorId;
         _turnoAntesDelCanto = TurnoActual;
         Estado = EstadoRonda.RespondiendoCanto;
         TurnoActual = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
+        RegistrarActividad();
     }
 
     public void ResponderEnvido(ulong jugadorId, RespuestaCanto respuesta)
@@ -122,8 +151,8 @@ public class Ronda
 
         if (respuesta == RespuestaCanto.Quiero)
         {
-            var envidoJugador1 = Gestor.MejorEnvido(_manoJugador1.ToArray());
-            var envidoJugador2 = Gestor.MejorEnvido(_manoJugador2.ToArray());
+            var envidoJugador1 = CalcularEnvido(Jugador1Id);
+            var envidoJugador2 = CalcularEnvido(Jugador2Id);
             var ganador = envidoJugador1 >= envidoJugador2 ? Jugador1Id : Jugador2Id;
             AsignarPuntos(ganador, PuntosPorQuiero(canto));
         }
@@ -133,8 +162,16 @@ public class Ronda
         }
 
         _cantoPendiente = null;
-        Estado = EstadoRonda.JugandoCartas;
-        TurnoActual = _turnoAntesDelCanto;
+
+        // Si el envido empujo a algun jugador al PuntosObjetivo, AsignarPuntos ya cerro
+        // la ronda (Fase.Finalizada) — no hay que seguir jugando cartas.
+        if (Fase != FaseRonda.Finalizada)
+        {
+            Estado = EstadoRonda.JugandoCartas;
+            TurnoActual = _turnoAntesDelCanto;
+        }
+
+        RegistrarActividad();
     }
 
     public void GritarTruco(ulong jugadorId, CantoTruco canto)
@@ -144,19 +181,44 @@ public class Ronda
             throw new InvalidOperationException("La ronda ya finalizo.");
         }
 
-        if (Estado != EstadoRonda.JugandoCartas && Estado != EstadoRonda.EsperandoEnvido)
+        // Escalada "tipo tenis": el rival que debe responder puede subir la apuesta
+        // directo (ej. Retruco) sin decir "Quiero" antes. Eso implica aceptar el
+        // canto pendiente y volver a cantar en el mismo gesto.
+        var esEscaladaTenis = Estado == EstadoRonda.RespondiendoTruco;
+
+        if (esEscaladaTenis)
         {
-            throw new InvalidOperationException("No se puede cantar truco en este momento.");
+            // El gate correcto aca es "le toca responder", no TurnoCantoTruco: ese
+            // todavia tiene el valor del ciclo anterior hasta que se aplique el
+            // "Quiero" implicito mas abajo.
+            if (jugadorId != TurnoActual)
+            {
+                throw new InvalidOperationException("No es el turno de este jugador.");
+            }
+        }
+        else
+        {
+            if (Estado != EstadoRonda.JugandoCartas && Estado != EstadoRonda.EsperandoEnvido)
+            {
+                throw new InvalidOperationException("No se puede cantar truco en este momento.");
+            }
+
+            if (TurnoCantoTruco != null && TurnoCantoTruco != jugadorId)
+            {
+                throw new InvalidOperationException("Solo el jugador con derecho a subir la apuesta puede cantar.");
+            }
         }
 
-        if (TurnoCantoTruco != null && TurnoCantoTruco != jugadorId)
-        {
-            throw new InvalidOperationException("Solo el jugador con derecho a subir la apuesta puede cantar.");
-        }
+        var valorDeReferencia = esEscaladaTenis ? ValorDeCantoTruco(_cantoTrucoPendiente!.Value) : ValorTrucoActual;
 
-        if (canto != SiguienteCantoTrucoEsperado(ValorTrucoActual))
+        if (canto != SiguienteCantoTrucoEsperado(valorDeReferencia))
         {
             throw new InvalidOperationException("No se puede cantar eso ahora.");
+        }
+
+        if (esEscaladaTenis)
+        {
+            ResponderTruco(jugadorId, RespuestaCanto.Quiero);
         }
 
         _cantoTrucoPendiente = canto;
@@ -165,6 +227,7 @@ public class Ronda
         _turnoAntesDelTruco = TurnoActual;
         Estado = EstadoRonda.RespondiendoTruco;
         TurnoActual = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
+        RegistrarActividad();
     }
 
     public void ResponderTruco(ulong jugadorId, RespuestaCanto respuesta)
@@ -191,11 +254,11 @@ public class Ronda
         }
         else
         {
-            AsignarPuntos(cantador, ValorTrucoActual);
-            GanadorRonda = cantador;
             _cantoTrucoPendiente = null;
-            Fase = FaseRonda.Finalizada;
+            TerminarManoActual(cantador, ValorTrucoActual);
         }
+
+        RegistrarActividad();
     }
 
     public void IrseAlMazo(ulong jugadorId)
@@ -206,9 +269,24 @@ public class Ronda
         }
 
         var rival = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
-        AsignarPuntos(rival, ValorTrucoActual);
-        GanadorRonda = rival;
-        Fase = FaseRonda.Finalizada;
+        TerminarManoActual(rival, ValorTrucoActual);
+    }
+
+    public int CalcularEnvido(ulong jugadorId)
+    {
+        var mano = jugadorId == Jugador1Id ? _manoOriginalJugador1 : _manoOriginalJugador2;
+        return Gestor.MejorEnvido(mano);
+    }
+
+    public bool PuedeCantarEnvido(ulong jugadorId)
+    {
+        if (jugadorId != TurnoActual || EnvidoCantado)
+        {
+            return false;
+        }
+
+        var cartasJugadas = jugadorId == Jugador1Id ? _cartasJugadasJugador1.Count : _cartasJugadasJugador2.Count;
+        return cartasJugadas == 0;
     }
 
     public void JugarCarta(ulong jugadorId, Carta carta)
@@ -256,7 +334,11 @@ public class Ronda
         {
             ResolverMano();
         }
+
+        RegistrarActividad();
     }
+
+    public void RegistrarActividad() => UltimaActividad = DateTime.UtcNow;
 
     private void ResolverMano()
     {
@@ -279,13 +361,21 @@ public class Ronda
             TurnoActual = Jugador1Id;
         }
 
+        // Guardar esto ANTES de limpiar/repartir de nuevo: la UI necesita poder mostrar
+        // las ultimas dos cartas jugadas aunque IniciarSiguienteMano ya haya vaciado las
+        // listas de cartas jugadas para el momento en que se arma el mensaje.
+        UltimaCartaMesaJ1 = _cartaActualJugador1;
+        UltimaCartaMesaJ2 = _cartaActualJugador2;
+        GanadorUltimaMano = resultado == ResultadoMano.Parda ? null : TurnoActual;
+
         _resultadosManos.Add(resultado);
         _cartaActualJugador1 = null;
         _cartaActualJugador2 = null;
 
         if (EvaluarGanadorRonda())
         {
-            Fase = FaseRonda.Finalizada;
+            // GanarRondaPorManos (via TerminarManoActual) ya dejo Fase en el estado correcto:
+            // Finalizada si se alcanzo el PuntosObjetivo, o PrimeraMano si arranco una mano nueva.
             return;
         }
 
@@ -304,14 +394,12 @@ public class Ronda
 
         if (victorias1 >= 2)
         {
-            GanadorRonda = Jugador1Id;
-            return true;
+            return GanarRondaPorManos(Jugador1Id);
         }
 
         if (victorias2 >= 2)
         {
-            GanadorRonda = Jugador2Id;
-            return true;
+            return GanarRondaPorManos(Jugador2Id);
         }
 
         if (_resultadosManos.Count == 1)
@@ -327,14 +415,12 @@ public class Ronda
             // Parda en la primera: gana la ronda quien gane la segunda. Parda en la segunda: gana quien gano la primera.
             if (primera != ResultadoMano.Parda && segunda == ResultadoMano.Parda)
             {
-                GanadorRonda = GanadorDe(primera);
-                return true;
+                return GanarRondaPorManos(GanadorDe(primera));
             }
 
             if (primera == ResultadoMano.Parda && segunda != ResultadoMano.Parda)
             {
-                GanadorRonda = GanadorDe(segunda);
-                return true;
+                return GanarRondaPorManos(GanadorDe(segunda));
             }
 
             return false;
@@ -344,22 +430,75 @@ public class Ronda
 
         if (primera == ResultadoMano.Parda && segunda == ResultadoMano.Parda && tercera == ResultadoMano.Parda)
         {
-            GanadorRonda = Jugador1Id;
-            return true;
+            return GanarRondaPorManos(Jugador1Id);
         }
 
         if (tercera != ResultadoMano.Parda)
         {
-            GanadorRonda = GanadorDe(tercera);
-            return true;
+            return GanarRondaPorManos(GanadorDe(tercera));
         }
 
         var primeraNoParda = _resultadosManos.First(r => r != ResultadoMano.Parda);
-        GanadorRonda = GanadorDe(primeraNoParda);
+        return GanarRondaPorManos(GanadorDe(primeraNoParda));
+    }
+
+    private bool GanarRondaPorManos(ulong ganador)
+    {
+        TerminarManoActual(ganador, ValorTrucoActual);
         return true;
     }
 
     private ulong GanadorDe(ResultadoMano resultado) => resultado == ResultadoMano.Jugador1 ? Jugador1Id : Jugador2Id;
+
+    // Punto de cierre comun para toda mano que termina (2/3 bazas, parda, truco rechazado o
+    // irse al mazo): suma los puntos y, si nadie llego al PuntosObjetivo, arranca la siguiente
+    // mano en vez de cortar la partida.
+    private void TerminarManoActual(ulong ganadorDeLaMano, int puntos)
+    {
+        AsignarPuntos(ganadorDeLaMano, puntos);
+
+        if (Fase != FaseRonda.Finalizada)
+        {
+            IniciarSiguienteMano();
+        }
+    }
+
+    private void IniciarSiguienteMano()
+    {
+        JugadorManoId = JugadorManoId == Jugador1Id ? Jugador2Id : Jugador1Id;
+
+        _cartasJugadasJugador1.Clear();
+        _cartasJugadasJugador2.Clear();
+        _resultadosManos.Clear();
+        _cartaActualJugador1 = null;
+        _cartaActualJugador2 = null;
+
+        var mazo = new Mazo();
+        mazo.Mezclar();
+        var reparto = mazo.Repartir();
+
+        _manoJugador1.Clear();
+        _manoJugador1.AddRange(reparto.ManoJugador1);
+        _manoJugador2.Clear();
+        _manoJugador2.AddRange(reparto.ManoJugador2);
+        _manoOriginalJugador1 = _manoJugador1.ToArray();
+        _manoOriginalJugador2 = _manoJugador2.ToArray();
+        Muestra = reparto.Muestra;
+        Gestor = new GestorDeJerarquia(Muestra);
+
+        _cantoPendiente = null;
+        JugadorQueCanto = null;
+        EnvidoCantado = false;
+        _cantoTrucoPendiente = null;
+        JugadorQueGritoTruco = null;
+        ValorTrucoActual = 1;
+        TurnoCantoTruco = null;
+
+        Fase = FaseRonda.PrimeraMano;
+        Estado = EstadoRonda.EsperandoEnvido;
+        TurnoActual = JugadorManoId;
+        RegistrarActividad();
+    }
 
     private void AsignarPuntos(ulong jugadorId, int puntos)
     {
@@ -371,13 +510,22 @@ public class Ronda
         {
             PuntosJugador2 += puntos;
         }
+
+        // Si con estos puntos alguno llega al objetivo, la partida termina ahi mismo,
+        // incluso si quedaban cartas por jugar (asi funciona el envido en el truco real).
+        if (PuntosJugador1 >= PuntosObjetivo || PuntosJugador2 >= PuntosObjetivo)
+        {
+            GanadorRonda = PuntosJugador1 >= PuntosObjetivo ? Jugador1Id : Jugador2Id;
+            Fase = FaseRonda.Finalizada;
+        }
     }
 
     private int PuntosPorQuiero(Canto canto) => canto switch
     {
         Canto.Envido => 2,
         Canto.RealEnvido => 3,
-        Canto.FaltaEnvido => PuntosFaltaEnvido,
+        // Falta Envido: lo que le falta al jugador que va ganando para llegar al objetivo.
+        Canto.FaltaEnvido => PuntosObjetivo - Math.Max(PuntosJugador1, PuntosJugador2),
         _ => throw new ArgumentOutOfRangeException(nameof(canto)),
     };
 
