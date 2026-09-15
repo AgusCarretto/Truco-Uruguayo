@@ -221,7 +221,15 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         var faseAntes = ronda.Fase;
         var muestraAntes = ronda.Muestra;
 
-        ronda.JugarCarta(jugadorQueJuega, carta);
+        try
+        {
+            ronda.JugarCarta(jugadorQueJuega, carta);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
+            return;
+        }
 
         var seResolvioLaBaza = ronda.Fase != faseAntes;
         var arrancoManoNueva = ronda.Muestra != muestraAntes;
@@ -279,6 +287,38 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
         {
             await RespondAsync("❌ No hay una partida activa en este canal.", ephemeral: true);
+            return;
+        }
+
+        if (opciones[0] == "flor")
+        {
+            try
+            {
+                ronda.CantarFlor(Context.User.Id);
+            }
+            catch (InvalidOperationException ex)
+            {
+                await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
+                return;
+            }
+
+            var puntosFlor = ronda.CalcularPuntosFlor(Context.User.Id);
+
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó FLOR ({puntosFlor} puntos)!");
+
+            if (ronda.Fase == FaseRonda.Finalizada)
+            {
+                await FinalizarYAnunciarRonda(ronda);
+            }
+            else
+            {
+                await Context.Channel.SendMessageAsync(
+                    $"👉 Turno de <@{ronda.TurnoActual}>.",
+                    components: ConstruirBotonesDeAccion(ronda));
+            }
+
+            await DeferAsync();
             return;
         }
 
@@ -564,7 +604,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
                     .WithPlaceholder("🎲 Cantar Envido...")
                     .AddOption("Envido", "envido")
                     .AddOption("Real Envido", "real_envido")
-                    .AddOption("Falta Envido", "falta_envido");
+                    .AddOption("Falta Envido", "falta_envido")
+                    .AddOption("🌸 Flor", "flor");
 
                 botones.WithSelectMenu(selectEnvido, row: 1);
             }
