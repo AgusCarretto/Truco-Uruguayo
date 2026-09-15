@@ -599,31 +599,32 @@ public class RondaTests
     [Fact]
     public void CantarEnvido_FaltaEnvido_Quiero_SumaLoQueLeFaltaAlQueVaGanandoParaElObjetivo()
     {
-        var ronda = NuevaRondaConMazoFijo(
-            new[] { new Carta(1, Palo.Espada), new Carta(7, Palo.Espada), new Carta(12, Palo.Copa) },
-            new[] { new Carta(4, Palo.Copa), new Carta(5, Palo.Copa), new Carta(6, Palo.Basto) },
-            puntosObjetivo: 20);
+        Ronda ronda;
+        ulong quienCanta;
 
-        // Jugador1 se va al mazo antes de jugar ninguna carta: Jugador2 se lleva el
-        // ValorTrucoActual base (1) y, como no alcanza el objetivo, arranca mano nueva.
-        ronda.IrseAlMazo(Jugador1);
+        // La mano nueva post-IrseAlMazo reparte cartas al azar (IniciarSiguienteMano no
+        // acepta mano fija). Si a quien tiene que cantar le toca Flor, cantarla (o resolver
+        // el cruce) anula el Envido para esta mano por diseno, asi que ese reparto no sirve
+        // para este test: se reintenta con una ronda nueva hasta que no sea el caso.
+        do
+        {
+            ronda = NuevaRondaConMazoFijo(
+                new[] { new Carta(1, Palo.Espada), new Carta(7, Palo.Espada), new Carta(12, Palo.Copa) },
+                new[] { new Carta(4, Palo.Copa), new Carta(5, Palo.Copa), new Carta(6, Palo.Basto) },
+                puntosObjetivo: 20);
+
+            // Jugador1 se va al mazo antes de jugar ninguna carta: Jugador2 se lleva el
+            // ValorTrucoActual base (1) y, como no alcanza el objetivo, arranca mano nueva.
+            ronda.IrseAlMazo(Jugador1);
+            quienCanta = ronda.TurnoActual;
+        }
+        while (ronda.TieneFlor(quienCanta));
 
         Assert.Equal(1, ronda.PuntosJugador2);
         Assert.Equal(0, ronda.PuntosJugador1);
         Assert.Equal(FaseRonda.PrimeraMano, ronda.Fase);
 
-        var quienCanta = ronda.TurnoActual;
         var quienResponde = quienCanta == Jugador1 ? Jugador2 : Jugador1;
-
-        // La mano nueva reparte cartas al azar (IniciarSiguienteMano no acepta mano fija):
-        // si a quienCanta le toco Flor por casualidad, hay que cantarla antes o CantarEnvido
-        // la bloquea. Cantarla suma puntos y cambia cuanto "falta" para el objetivo, asi que
-        // lo esperado se calcula despues de resolverla en vez de hardcodear 19.
-        if (ronda.TieneFlor(quienCanta))
-        {
-            ronda.CantarFlor(quienCanta);
-        }
-
         var faltaEsperada = ronda.PuntosObjetivo - Math.Max(ronda.PuntosJugador1, ronda.PuntosJugador2);
         var puntos1Antes = ronda.PuntosJugador1;
         var puntos2Antes = ronda.PuntosJugador2;
@@ -1052,6 +1053,25 @@ public class RondaTests
 
         Assert.True(ronda.FlorCantada[Jugador1]);
         Assert.Equal(3, ronda.PuntosJugador1);
+        Assert.Equal(EstadoRonda.JugandoCartas, ronda.Estado);
+        Assert.True(ronda.EnvidoCantado);
+        Assert.Equal(Jugador1, ronda.TurnoActual);
+    }
+
+    [Fact]
+    public void CantarFlor_RivalTambienTieneFlor_AbreElCruce()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        ronda.CantarFlor(Jugador1);
+
+        Assert.Equal(EstadoRonda.RespondiendoFlor, ronda.Estado);
+        Assert.Equal(6, ronda.PuntosFlorActuales);
+        Assert.Equal(Jugador2, ronda.TurnoActual);
+        Assert.Equal(0, ronda.PuntosJugador1);
+        Assert.Equal(0, ronda.PuntosJugador2);
     }
 
     [Fact]
@@ -1095,16 +1115,18 @@ public class RondaTests
     }
 
     [Fact]
-    public void CantarEnvido_DespuesDeCantarFlor_YaNoBloquea()
+    public void CantarEnvido_DespuesDeCantarFlorSinCruce_QuedaAnulado()
     {
         var ronda = NuevaRondaConMazoFijo(
             new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
             new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
 
+        // El rival no tiene Flor: CantarFlor resuelve sin cruce y marca EnvidoCantado en
+        // true a proposito (asi es como queda "anulado" el Envido para esta mano).
         ronda.CantarFlor(Jugador1);
         var excepcion = Record.Exception(() => ronda.CantarEnvido(Jugador1, Canto.Envido));
 
-        Assert.Null(excepcion);
+        Assert.IsType<InvalidOperationException>(excepcion);
     }
 
     [Fact]

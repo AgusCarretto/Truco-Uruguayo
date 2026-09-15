@@ -6,4 +6,6 @@ public enum EstadoRonda
     RespondiendoCanto,
     JugandoCartas,
     RespondiendoTruco,
+    RespondiendoFlor,
+    RespondiendoContraFlor,
 }

@@ -36,6 +36,7 @@ public class Ronda
     private CantoTruco? _cantoTrucoPendiente;
     private EstadoRonda _estadoAntesDelTruco;
     private ulong _turnoAntesDelTruco;
+    private int _puntosFlorAntesDelUltimoAumento;
 
     public ulong Jugador1Id { get; }
     public ulong Jugador2Id { get; }
@@ -65,6 +66,7 @@ public class Ronda
     public Carta? UltimaCartaMesaJ2 { get; private set; }
     public ulong? GanadorUltimaMano { get; private set; }
     public Dictionary<ulong, bool> FlorCantada { get; private set; }
+    public int PuntosFlorActuales { get; private set; }
 
     public Ronda(ulong jugador1Id, ulong jugador2Id, int puntosObjetivo)
     {
@@ -376,7 +378,26 @@ public class Ronda
         }
 
         FlorCantada[jugadorId] = true;
-        AsignarPuntos(jugadorId, 3);
+        var rivalId = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
+
+        if (!TieneFlor(rivalId))
+        {
+            AsignarPuntos(jugadorId, 3);
+            EnvidoCantado = true;
+
+            if (Fase != FaseRonda.Finalizada)
+            {
+                Estado = EstadoRonda.JugandoCartas;
+                TurnoActual = JugadorManoId;
+            }
+        }
+        else
+        {
+            Estado = EstadoRonda.RespondiendoFlor;
+            PuntosFlorActuales = 6;
+            TurnoActual = rivalId;
+        }
+
         RegistrarActividad();
     }
 
@@ -590,6 +611,8 @@ public class Ronda
         ValorTrucoActual = 1;
         TurnoCantoTruco = null;
         FlorCantada.Clear();
+        PuntosFlorActuales = 0;
+        _puntosFlorAntesDelUltimoAumento = 0;
 
         Fase = FaseRonda.PrimeraMano;
         Estado = EstadoRonda.EsperandoEnvido;
