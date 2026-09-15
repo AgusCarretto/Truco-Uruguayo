@@ -289,6 +289,10 @@ public class Ronda
         return cartasJugadas == 0;
     }
 
+    public bool EsPieza(Carta carta) => Gestor.EsPieza(carta);
+
+    public int ValorPieza(Carta carta) => Gestor.EsPieza(carta) ? Gestor.ValorEnvido(carta) : 0;
+
     public void JugarCarta(ulong jugadorId, Carta carta)
     {
         if (Fase == FaseRonda.Finalizada)

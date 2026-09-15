@@ -849,6 +849,34 @@ public class RondaTests
         Assert.Equal(4, ronda.ValorTrucoActual);
     }
 
+    // --- Flor ---
+
+    [Fact]
+    public void EsPieza_CartaDelPaloDeLaMuestraConNumeroDePieza_DevuelveTrue()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        Assert.True(ronda.EsPieza(new Carta(2, Palo.Oro)));
+        Assert.False(ronda.EsPieza(new Carta(3, Palo.Espada)));
+    }
+
+    [Fact]
+    public void ValorPieza_CartasDePieza_DevuelveElValorEsperado()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        Assert.Equal(30, ronda.ValorPieza(new Carta(2, Palo.Oro)));
+        Assert.Equal(29, ronda.ValorPieza(new Carta(4, Palo.Oro)));
+        Assert.Equal(28, ronda.ValorPieza(new Carta(5, Palo.Oro)));
+        Assert.Equal(27, ronda.ValorPieza(new Carta(11, Palo.Oro)));
+        Assert.Equal(27, ronda.ValorPieza(new Carta(10, Palo.Oro)));
+        Assert.Equal(0, ronda.ValorPieza(new Carta(3, Palo.Espada)));
+    }
+
     private static Ronda NuevaRondaConMazoFijo(IEnumerable<Carta> manoJugador1, IEnumerable<Carta> manoJugador2, int puntosObjetivo = 15) =>
         new(Jugador1, Jugador2, Muestra, manoJugador1.ToList(), manoJugador2.ToList(), puntosObjetivo, jugadorManoId: Jugador1);
 }
