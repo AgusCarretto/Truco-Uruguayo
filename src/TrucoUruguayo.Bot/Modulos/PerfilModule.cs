@@ -34,8 +34,12 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
         var xpNivelActual = usuarioDb.Xp - NivelCalculadora.XpParaAlcanzarNivel(usuarioDb.Nivel);
         var xpNecesaria = usuarioDb.Nivel * 100;
 
+        var tituloEmbed = usuarioDb.TituloEquipado is not null
+            ? $"👤 {usuarioDb.Nombre} | 🏆 {usuarioDb.TituloEquipado}"
+            : $"👤 {usuarioDb.Nombre}";
+
         var embed = new EmbedBuilder()
-            .WithTitle($"👤 {usuarioDb.Nombre}")
+            .WithTitle(tituloEmbed)
             .AddField("🪙 Monedas", usuarioDb.Monedas, true)
             .AddField("✅ Victorias", usuarioDb.Victorias, true)
             .AddField("❌ Derrotas", usuarioDb.Derrotas, true)
@@ -48,6 +52,56 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         await RespondAsync(embed: embed.Build());
+    }
+
+    [SlashCommand("titulos", "Mira que titulos tenes desbloqueados")]
+    public async Task TitulosAsync()
+    {
+        var usuarioDb = await _usuarioRepository.ObtenerUsuarioAsync(Context.User.Id);
+
+        if (usuarioDb is null)
+        {
+            await RespondAsync("❓ Todavía no jugaste nunca con el bot.", ephemeral: true);
+            return;
+        }
+
+        var lineas = ConstantesTitulos.TitulosPorNivel
+            .OrderBy(kv => kv.Key)
+            .Select(kv => usuarioDb.Nivel >= kv.Key
+                ? $"✅ **{kv.Value}** (Nivel {kv.Key})"
+                : $"🔒 {kv.Value} — se desbloquea en Nivel {kv.Key}");
+
+        var embed = new EmbedBuilder()
+            .WithTitle("🏆 Títulos")
+            .WithDescription(string.Join('\n', lineas))
+            .WithColor(Color.Gold);
+
+        await RespondAsync(embed: embed.Build());
+    }
+
+    [SlashCommand("titulo_equipar", "Equipa un titulo que hayas desbloqueado")]
+    public async Task TituloEquiparAsync(
+        [Summary("titulo", "Que titulo equipar")]
+        [Choice("Pichón", "Pichón")]
+        [Choice("Orejeador", "Orejeador")]
+        [Choice("Bocón", "Bocón")]
+        [Choice("Rey del Envido", "Rey del Envido")]
+        [Choice("Cebador de Canarias Suave", "Cebador de Canarias Suave")]
+        [Choice("Asador Oficial", "Asador Oficial")]
+        [Choice("Maestro del Retruco", "Maestro del Retruco")]
+        [Choice("Dueño de la Muestra", "Dueño de la Muestra")]
+        [Choice("Leyenda del Truco", "Leyenda del Truco")]
+        string titulo)
+    {
+        var exito = await _usuarioRepository.EquiparTituloAsync(Context.User.Id, titulo);
+
+        if (!exito)
+        {
+            await RespondAsync("🔒 Todavía no tenés el nivel para ese título.", ephemeral: true);
+            return;
+        }
+
+        await RespondAsync($"✅ Ahora tenés equipado: **{titulo}**");
     }
 
     private string GenerarBarraExp(int expActual, int expNecesaria, int longitudBarra = 10)
