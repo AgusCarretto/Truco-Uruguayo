@@ -55,6 +55,12 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        if (_gestorPartidas.TieneRetoPendiente(retadorId))
+        {
+            await RespondAsync("⚠️ Ya tenés un reto pendiente. Cancelalo o esperá a que se resuelva.", ephemeral: true);
+            return;
+        }
+
         if (_gestorPartidas.ObtenerPartidaPorUsuario(retadoId) is not null)
         {
             await RespondAsync($"⚠️ {usuario.Mention} ya está jugando otra partida.", ephemeral: true);
@@ -84,11 +90,15 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         var componentes = new ComponentBuilder()
             .WithButton("✅ Aceptar", $"reto_aceptar_{retadorId}_{retadoId}_{apuesta}_{puntos}", ButtonStyle.Success)
+            .WithButton("❌ Cancelar", $"reto_cancelar_{retadorId}_{retadoId}_{apuesta}_{puntos}", ButtonStyle.Danger)
             .Build();
 
         await RespondAsync(
-            $"⚔️ {usuario.Mention}, {Context.User.Mention} te desafía a una partida de Truco a {puntos} puntos por 🪙 {apuesta} monedas!",
+            $"⚔️ {usuario.Mention}, {Context.User.Mention} te desafía a una partida de Truco a {puntos} puntos por 🪙 {apuesta} monedas! (expira en 30s)",
             components: componentes);
+
+        var mensaje = await GetOriginalResponseAsync();
+        _gestorPartidas.RegistrarReto(new RetoPendiente(retadorId, retadoId, apuesta, puntos, Context.Channel.Id, mensaje.Id));
     }
 
     [ComponentInteraction("reto_aceptar_*_*_*_*")]
@@ -97,6 +107,12 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         if (Context.User.Id != retadoId)
         {
             await RespondAsync("🚫 Solo el retado puede aceptar.", ephemeral: true);
+            return;
+        }
+
+        if (!_gestorPartidas.TryQuitarReto(retadorId, out _))
+        {
+            await RespondAsync("⚠️ Este reto ya no está disponible.", ephemeral: true);
             return;
         }
 
@@ -122,6 +138,28 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             "mesa.png",
             text: $"{GenerarTextoMarcador(ronda)}🎉 ¡Partida a {puntos} puntos iniciada por 🪙 {apuesta} monedas! 🃏 La muestra es **{ronda.Muestra}**. 👉 Turno de <@{retadorId}>.",
             components: ConstruirBotonesDeAccion(ronda));
+    }
+
+    [ComponentInteraction("reto_cancelar_*_*_*_*")]
+    public async Task CancelarReto(ulong retadorId, ulong retadoId, int apuesta, int puntos)
+    {
+        if (Context.User.Id != retadorId)
+        {
+            await RespondAsync("🚫 Solo quien retó puede cancelar el reto.", ephemeral: true);
+            return;
+        }
+
+        if (!_gestorPartidas.TryQuitarReto(retadorId, out _))
+        {
+            await RespondAsync("⚠️ Este reto ya no está disponible.", ephemeral: true);
+            return;
+        }
+
+        await ((SocketMessageComponent)Context.Interaction).UpdateAsync(mensaje =>
+        {
+            mensaje.Content = $"❌ *Reto cancelado por <@{retadorId}>.*";
+            mensaje.Components = new ComponentBuilder().Build();
+        });
     }
 
     [ComponentInteraction("ver_mano")]
