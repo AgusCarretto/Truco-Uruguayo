@@ -877,6 +877,106 @@ public class RondaTests
         Assert.Equal(0, ronda.ValorPieza(new Carta(3, Palo.Espada)));
     }
 
+    [Fact]
+    public void TieneFlor_TresPiezas_DevuelveTrue()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.True(ronda.TieneFlor(Jugador1));
+    }
+
+    [Fact]
+    public void TieneFlor_DosPiezas_DevuelveTrue()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(3, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.True(ronda.TieneFlor(Jugador1));
+    }
+
+    [Fact]
+    public void TieneFlor_UnaPiezaYLasOtrasDosMismoPalo_DevuelveTrue()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(6, Palo.Espada), new Carta(7, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.True(ronda.TieneFlor(Jugador1));
+    }
+
+    [Fact]
+    public void TieneFlor_UnaPiezaYLasOtrasDosPalosDistintos_DevuelveFalse()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(6, Palo.Espada), new Carta(7, Palo.Basto) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.False(ronda.TieneFlor(Jugador1));
+    }
+
+    [Fact]
+    public void TieneFlor_CeroPiezasYLasTresMismoPalo_DevuelveTrue()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(6, Palo.Espada), new Carta(7, Palo.Espada), new Carta(3, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.True(ronda.TieneFlor(Jugador1));
+    }
+
+    [Fact]
+    public void TieneFlor_CeroPiezasYPalosMixtos_DevuelveFalse()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(6, Palo.Espada), new Carta(7, Palo.Basto), new Carta(3, Palo.Copa) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.False(ronda.TieneFlor(Jugador1));
+    }
+
+    [Fact]
+    public void CalcularPuntosFlor_TresPiezas_SumaLaMasAltaEnteraYElDigitoDeUnidadesDeLasOtrasDos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.Equal(47, ronda.CalcularPuntosFlor(Jugador1));
+    }
+
+    [Fact]
+    public void CalcularPuntosFlor_DosPiezas_SumaLaMasAltaEnteraElDigitoDeLaOtraYElValorDeLaTercera()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(3, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.Equal(42, ronda.CalcularPuntosFlor(Jugador1));
+    }
+
+    [Fact]
+    public void CalcularPuntosFlor_UnaPieza_SumaLaPiezaMasElValorDeLasOtrasDos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(6, Palo.Espada), new Carta(7, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.Equal(43, ronda.CalcularPuntosFlor(Jugador1));
+    }
+
+    [Fact]
+    public void CalcularPuntosFlor_CeroPiezas_Suma20MasElValorDeLasTres()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(6, Palo.Espada), new Carta(7, Palo.Espada), new Carta(3, Palo.Espada) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        Assert.Equal(36, ronda.CalcularPuntosFlor(Jugador1));
+    }
+
     private static Ronda NuevaRondaConMazoFijo(IEnumerable<Carta> manoJugador1, IEnumerable<Carta> manoJugador2, int puntosObjetivo = 15) =>
         new(Jugador1, Jugador2, Muestra, manoJugador1.ToList(), manoJugador2.ToList(), puntosObjetivo, jugadorManoId: Jugador1);
 }

@@ -293,6 +293,56 @@ public class Ronda
 
     public int ValorPieza(Carta carta) => Gestor.EsPieza(carta) ? Gestor.ValorEnvido(carta) : 0;
 
+    public bool TieneFlor(ulong jugadorId)
+    {
+        var mano = jugadorId == Jugador1Id ? _manoOriginalJugador1 : _manoOriginalJugador2;
+        var piezas = mano.Where(EsPieza).ToList();
+
+        if (piezas.Count >= 2)
+        {
+            return true;
+        }
+
+        if (piezas.Count == 1)
+        {
+            var restantes = mano.Where(c => !EsPieza(c)).ToList();
+            return restantes[0].Palo == restantes[1].Palo;
+        }
+
+        return mano[0].Palo == mano[1].Palo && mano[1].Palo == mano[2].Palo;
+    }
+
+    public int CalcularPuntosFlor(ulong jugadorId)
+    {
+        var mano = jugadorId == Jugador1Id ? _manoOriginalJugador1 : _manoOriginalJugador2;
+        var piezas = mano.Where(EsPieza).OrderByDescending(ValorPieza).ToList();
+
+        if (piezas.Count == 0)
+        {
+            return 20 + mano.Sum(Gestor.ValorEnvido);
+        }
+
+        if (piezas.Count == 1)
+        {
+            var restantes = mano.Where(c => !EsPieza(c));
+            return ValorPieza(piezas[0]) + restantes.Sum(Gestor.ValorEnvido);
+        }
+
+        var total = ValorPieza(piezas[0]);
+        for (var i = 1; i < piezas.Count; i++)
+        {
+            total += ValorPieza(piezas[i]) % 10;
+        }
+
+        if (piezas.Count == 2)
+        {
+            var tercera = mano.First(c => !EsPieza(c));
+            total += Gestor.ValorEnvido(tercera);
+        }
+
+        return total;
+    }
+
     public void JugarCarta(ulong jugadorId, Carta carta)
     {
         if (Fase == FaseRonda.Finalizada)
