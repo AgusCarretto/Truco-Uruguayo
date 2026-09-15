@@ -100,7 +100,7 @@ public class UsuarioRepositoryTests
     }
 
     [Fact]
-    public async Task SumarVictoriaAsync_SumaUnaVictoriaYQuinceXp()
+    public async Task SumarVictoriaAsync_SumaUnaVictoriaYNoTocaElXp()
     {
         var repositorio = new UsuarioRepository(_connectionString);
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
@@ -109,11 +109,11 @@ public class UsuarioRepositoryTests
 
         var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
         Assert.Equal(1, actualizado!.Victorias);
-        Assert.Equal(15, actualizado.Xp);
+        Assert.Equal(0, actualizado.Xp);
     }
 
     [Fact]
-    public async Task SumarDerrotaAsync_SumaUnaDerrotaYTresXp()
+    public async Task SumarDerrotaAsync_SumaUnaDerrotaYNoTocaElXp()
     {
         var repositorio = new UsuarioRepository(_connectionString);
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
@@ -122,7 +122,7 @@ public class UsuarioRepositoryTests
 
         var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
         Assert.Equal(1, actualizado!.Derrotas);
-        Assert.Equal(3, actualizado.Xp);
+        Assert.Equal(0, actualizado.Xp);
     }
 
     [Fact]
@@ -165,11 +165,8 @@ public class UsuarioRepositoryTests
         await using var usuarioBajo = await UsuarioDePrueba.CrearAsync(_connectionString);
         await using var usuarioAlto = await UsuarioDePrueba.CrearAsync(_connectionString);
 
-        await repositorio.SumarVictoriaAsync(usuarioBajo.Id);
-        for (var i = 0; i < 5; i++)
-        {
-            await repositorio.SumarVictoriaAsync(usuarioAlto.Id);
-        }
+        await repositorio.SumarExpAsync(usuarioBajo.Id, 50);
+        await repositorio.SumarExpAsync(usuarioAlto.Id, 250);
 
         var top = (await repositorio.ObtenerTopUsuariosAsync("xp", limite: 1000)).ToList();
         var posicionAlto = top.FindIndex(u => (ulong)u.Id == usuarioAlto.Id);

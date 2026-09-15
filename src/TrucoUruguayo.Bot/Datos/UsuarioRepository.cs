@@ -56,7 +56,7 @@ public class UsuarioRepository
     {
         await using var conexion = new NpgsqlConnection(_connectionString);
 
-        const string sql = "UPDATE usuarios SET victorias = victorias + 1, xp = xp + 15 WHERE id = @Id";
+        const string sql = "UPDATE usuarios SET victorias = victorias + 1 WHERE id = @Id";
 
         await conexion.ExecuteAsync(sql, new { Id = (long)discordId });
     }
@@ -65,7 +65,7 @@ public class UsuarioRepository
     {
         await using var conexion = new NpgsqlConnection(_connectionString);
 
-        const string sql = "UPDATE usuarios SET derrotas = derrotas + 1, xp = xp + 3 WHERE id = @Id";
+        const string sql = "UPDATE usuarios SET derrotas = derrotas + 1 WHERE id = @Id";
 
         await conexion.ExecuteAsync(sql, new { Id = (long)discordId });
     }
