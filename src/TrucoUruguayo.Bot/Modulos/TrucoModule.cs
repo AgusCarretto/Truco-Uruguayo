@@ -456,7 +456,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        var quienResponde = ronda.JugadorQueCanto == ronda.Jugador1Id ? ronda.Jugador2Id : ronda.Jugador1Id;
+        var cantador = ronda.JugadorQueCanto!.Value;
+        var quienResponde = cantador == ronda.Jugador1Id ? ronda.Jugador2Id : ronda.Jugador1Id;
 
         if (Context.User.Id != quienResponde)
         {
@@ -466,6 +467,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         var respuesta = accion == "quiero" ? RespuestaCanto.Quiero : RespuestaCanto.NoQuiero;
         var puntosJugador1Antes = ronda.PuntosJugador1;
+        var puntosJugador2Antes = ronda.PuntosJugador2;
 
         try
         {
@@ -477,14 +479,21 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        var puntosGanadosJugador1 = ronda.PuntosJugador1 - puntosJugador1Antes;
-        var mensajePuntos = puntosGanadosJugador1 > 0
-            ? $"🎲 <@{ronda.Jugador1Id}> se lleva {puntosGanadosJugador1} puntos de envido."
-            : $"🎲 <@{ronda.Jugador2Id}> se lleva {ronda.PuntosJugador2} puntos de envido.";
+        var deltaJugador1 = ronda.PuntosJugador1 - puntosJugador1Antes;
+        var ganador = deltaJugador1 > 0 ? ronda.Jugador1Id : ronda.Jugador2Id;
+        var puntosGanados = deltaJugador1 > 0 ? deltaJugador1 : ronda.PuntosJugador2 - puntosJugador2Antes;
 
-        var puntos1 = ronda.CalcularEnvido(ronda.Jugador1Id);
-        var puntos2 = ronda.CalcularEnvido(ronda.Jugador2Id);
-        mensajePuntos += $" Tantos: <@{ronda.Jugador1Id}> {puntos1} | <@{ronda.Jugador2Id}> {puntos2}.";
+        string mensajePuntos;
+        if (respuesta == RespuestaCanto.NoQuiero)
+        {
+            mensajePuntos = $"❌ <@{quienResponde}> no quiso. <@{ganador}> se lleva {puntosGanados} punto(s) de envido.";
+        }
+        else
+        {
+            var puntos1 = ronda.CalcularEnvido(ronda.Jugador1Id);
+            var puntos2 = ronda.CalcularEnvido(ronda.Jugador2Id);
+            mensajePuntos = $"🎲 <@{ganador}> se lleva {puntosGanados} puntos de envido. Tantos: <@{ronda.Jugador1Id}> {puntos1} | <@{ronda.Jugador2Id}> {puntos2}.";
+        }
 
         if (ronda.Fase == FaseRonda.Finalizada)
         {
@@ -494,7 +503,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         else
         {
             await Context.Channel.SendMessageAsync(
-                $"{GenerarTextoMarcador(ronda)}{mensajePuntos} 👉 Turno de <@{ronda.TurnoActual}>.",
+                $"{GenerarTextoMarcador(ronda)}{mensajePuntos}",
                 components: ConstruirBotonesDeAccion(ronda));
         }
 

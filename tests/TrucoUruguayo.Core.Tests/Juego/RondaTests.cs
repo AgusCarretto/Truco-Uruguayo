@@ -614,6 +614,17 @@ public class RondaTests
 
         var quienCanta = ronda.TurnoActual;
         var quienResponde = quienCanta == Jugador1 ? Jugador2 : Jugador1;
+
+        // La mano nueva reparte cartas al azar (IniciarSiguienteMano no acepta mano fija):
+        // si a quienCanta le toco Flor por casualidad, hay que cantarla antes o CantarEnvido
+        // la bloquea. Cantarla suma puntos y cambia cuanto "falta" para el objetivo, asi que
+        // lo esperado se calcula despues de resolverla en vez de hardcodear 19.
+        if (ronda.TieneFlor(quienCanta))
+        {
+            ronda.CantarFlor(quienCanta);
+        }
+
+        var faltaEsperada = ronda.PuntosObjetivo - Math.Max(ronda.PuntosJugador1, ronda.PuntosJugador2);
         var puntos1Antes = ronda.PuntosJugador1;
         var puntos2Antes = ronda.PuntosJugador2;
 
@@ -623,10 +634,10 @@ public class RondaTests
 
         ronda.ResponderEnvido(quienResponde, RespuestaCanto.Quiero);
 
-        // El que va ganando (Jugador2, con 1) necesita 19 para llegar a 20 - sin importar
+        // El que va ganando necesita faltaEsperada para llegar al objetivo - sin importar
         // quien gane este envido puntual, eso es lo que tiene que sumarse en total.
         var delta = (ronda.PuntosJugador1 - puntos1Antes) + (ronda.PuntosJugador2 - puntos2Antes);
-        Assert.Equal(19, delta);
+        Assert.Equal(faltaEsperada, delta);
     }
 
     [Fact]
