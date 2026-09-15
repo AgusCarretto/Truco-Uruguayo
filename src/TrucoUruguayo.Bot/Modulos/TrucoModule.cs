@@ -492,10 +492,23 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await _usuarioRepository.SumarVictoriaAsync(ganadorId);
         await _usuarioRepository.SumarDerrotaAsync(perdedorId);
 
+        var (subioGanador, nivelGanador) = await _usuarioRepository.SumarExpAsync(ganadorId, 50);
+        var (subioPerdedor, nivelPerdedor) = await _usuarioRepository.SumarExpAsync(perdedorId, 15);
+
         _gestorPartidas.FinalizarPartida(Context.Channel.Id);
 
         await Context.Channel.SendMessageAsync(
             $"🏆 ¡Ronda finalizada! <@{ganadorId}> gana la partida y se lleva 🪙 {pozo} monedas!");
+
+        if (subioGanador)
+        {
+            await Context.Channel.SendMessageAsync($"🎉 ¡Felicidades <@{ganadorId}>! Has alcanzado el **Nivel {nivelGanador}**.");
+        }
+
+        if (subioPerdedor)
+        {
+            await Context.Channel.SendMessageAsync($"🎉 ¡Felicidades <@{perdedorId}>! Has alcanzado el **Nivel {nivelPerdedor}**.");
+        }
     }
 
     private static MessageComponent ConstruirBotonesDeAccion(Ronda ronda)

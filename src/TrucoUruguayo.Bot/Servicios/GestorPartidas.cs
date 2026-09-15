@@ -86,12 +86,25 @@ public class GestorPartidas
                 await _usuarioRepository.SumarVictoriaAsync(ganadorId);
                 await _usuarioRepository.SumarDerrotaAsync(afkId);
 
+                var (subioGanador, nivelGanador) = await _usuarioRepository.SumarExpAsync(ganadorId, 50);
+                var (subioPerdedor, nivelPerdedor) = await _usuarioRepository.SumarExpAsync(afkId, 15);
+
                 FinalizarPartida(canalId);
 
                 if (_client.GetChannel(canalId) is IMessageChannel canal)
                 {
                     await canal.SendMessageAsync(
                         $"⏳ ¡<@{afkId}> se quedó dormido (AFK)! <@{ganadorId}> gana por abandono y se lleva el pozo.");
+
+                    if (subioGanador)
+                    {
+                        await canal.SendMessageAsync($"🎉 ¡Felicidades <@{ganadorId}>! Has alcanzado el **Nivel {nivelGanador}**.");
+                    }
+
+                    if (subioPerdedor)
+                    {
+                        await canal.SendMessageAsync($"🎉 ¡Felicidades <@{afkId}>! Has alcanzado el **Nivel {nivelPerdedor}**.");
+                    }
                 }
             }
         }
