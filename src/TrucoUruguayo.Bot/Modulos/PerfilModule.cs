@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using TrucoUruguayo.Bot.Datos;
+using TrucoUruguayo.Bot.Modelo;
 
 namespace TrucoUruguayo.Bot.Modulos;
 
@@ -30,12 +31,15 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
         var inventario = await _tiendaRepository.ObtenerInventarioAsync(objetivo.Id);
         var equipados = inventario.Where(item => item.Equipado).ToList();
 
+        var xpNivelActual = usuarioDb.Xp - NivelCalculadora.XpParaAlcanzarNivel(usuarioDb.Nivel);
+        var xpNecesaria = usuarioDb.Nivel * 100;
+
         var embed = new EmbedBuilder()
             .WithTitle($"👤 {usuarioDb.Nombre}")
             .AddField("🪙 Monedas", usuarioDb.Monedas, true)
             .AddField("✅ Victorias", usuarioDb.Victorias, true)
             .AddField("❌ Derrotas", usuarioDb.Derrotas, true)
-            .AddField("✨ XP", usuarioDb.Xp, true)
+            .AddField("🎮 Nivel y Experiencia", $"**Nivel {usuarioDb.Nivel}**\n{GenerarBarraExp(xpNivelActual, xpNecesaria)}")
             .WithColor(Color.Gold);
 
         if (equipados.Count > 0)
@@ -44,5 +48,13 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         await RespondAsync(embed: embed.Build());
+    }
+
+    private string GenerarBarraExp(int expActual, int expNecesaria, int longitudBarra = 10)
+    {
+        double porcentaje = Math.Clamp((double)expActual / expNecesaria, 0, 1);
+        int bloquesLlenos = (int)Math.Round(porcentaje * longitudBarra);
+        int bloquesVacios = longitudBarra - bloquesLlenos;
+        return $"[{new string('█', bloquesLlenos)}{new string('░', bloquesVacios)}] {expActual}/{expNecesaria} XP";
     }
 }
