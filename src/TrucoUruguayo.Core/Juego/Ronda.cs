@@ -452,6 +452,43 @@ public class Ronda
         RegistrarActividad();
     }
 
+    public void ResponderContraFlor(ulong jugadorId, bool quiere)
+    {
+        if (jugadorId != TurnoActual)
+        {
+            throw new InvalidOperationException("No es el turno de este jugador.");
+        }
+
+        if (Estado != EstadoRonda.RespondiendoContraFlor)
+        {
+            throw new InvalidOperationException("No hay ninguna Contra Flor pendiente de responder.");
+        }
+
+        var proponente = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
+
+        if (quiere)
+        {
+            var ganador = CalcularPuntosFlor(Jugador1Id) >= CalcularPuntosFlor(Jugador2Id) ? Jugador1Id : Jugador2Id;
+            AsignarPuntos(ganador, PuntosFlorActuales);
+        }
+        else
+        {
+            AsignarPuntos(proponente, _puntosFlorAntesDelUltimoAumento);
+        }
+
+        FlorCantada[Jugador1Id] = true;
+        FlorCantada[Jugador2Id] = true;
+        EnvidoCantado = true;
+
+        if (Fase != FaseRonda.Finalizada)
+        {
+            Estado = EstadoRonda.JugandoCartas;
+            TurnoActual = JugadorManoId;
+        }
+
+        RegistrarActividad();
+    }
+
     public void JugarCarta(ulong jugadorId, Carta carta)
     {
         if (Fase == FaseRonda.Finalizada)

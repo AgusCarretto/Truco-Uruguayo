@@ -1152,6 +1152,98 @@ public class RondaTests
     }
 
     [Fact]
+    public void ResponderContraFlor_QuieroDespuesDeConFlorEnvido_GanaElDeMasPuntosLosOchoPuntos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+        ronda.CantarFlor(Jugador1);
+        ronda.ResponderFlor(Jugador2, "con_flor_envido");
+
+        ronda.ResponderContraFlor(Jugador1, quiere: true);
+
+        Assert.Equal(8, ronda.PuntosJugador1);
+        Assert.Equal(0, ronda.PuntosJugador2);
+        Assert.Equal(EstadoRonda.JugandoCartas, ronda.Estado);
+        Assert.Equal(Jugador1, ronda.TurnoActual);
+    }
+
+    [Fact]
+    public void ResponderContraFlor_NoQuieroDespuesDeConFlorEnvido_ElQuePropusoGanaSeisPuntos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+        ronda.CantarFlor(Jugador1);
+        ronda.ResponderFlor(Jugador2, "con_flor_envido");
+
+        ronda.ResponderContraFlor(Jugador1, quiere: false);
+
+        Assert.Equal(0, ronda.PuntosJugador1);
+        Assert.Equal(6, ronda.PuntosJugador2);
+        Assert.Equal(EstadoRonda.JugandoCartas, ronda.Estado);
+    }
+
+    [Fact]
+    public void ResponderContraFlor_NoQuieroDespuesDeContraFlorAlResto_ElQuePropusoGanaSeisPuntosNoElResto()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) },
+            puntosObjetivo: 15);
+        ronda.CantarFlor(Jugador1);
+        ronda.ResponderFlor(Jugador2, "contra_flor_al_resto");
+
+        ronda.ResponderContraFlor(Jugador1, quiere: false);
+
+        Assert.Equal(0, ronda.PuntosJugador1);
+        Assert.Equal(6, ronda.PuntosJugador2);
+    }
+
+    [Fact]
+    public void ResponderContraFlor_QuieroDespuesDeContraFlorAlResto_GanaElDeMasPuntosYTerminaLaPartida()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) },
+            puntosObjetivo: 15);
+        ronda.CantarFlor(Jugador1);
+        ronda.ResponderFlor(Jugador2, "contra_flor_al_resto");
+
+        ronda.ResponderContraFlor(Jugador1, quiere: true);
+
+        Assert.Equal(15, ronda.PuntosJugador1);
+        Assert.Equal(FaseRonda.Finalizada, ronda.Fase);
+        Assert.Equal(Jugador1, ronda.GanadorRonda);
+    }
+
+    [Fact]
+    public void ResponderContraFlor_FueraDeTurno_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+        ronda.CantarFlor(Jugador1);
+        ronda.ResponderFlor(Jugador2, "con_flor_envido");
+
+        var excepcion = Record.Exception(() => ronda.ResponderContraFlor(Jugador2, true));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
+    [Fact]
+    public void ResponderContraFlor_SinContraFlorPendiente_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        var excepcion = Record.Exception(() => ronda.ResponderContraFlor(Jugador1, true));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
+    [Fact]
     public void CantarFlor_SinFlor_TiraExcepcionYNoSumaPuntos()
     {
         var ronda = NuevaRondaConMazoFijo(
