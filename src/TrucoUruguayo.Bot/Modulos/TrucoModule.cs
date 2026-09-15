@@ -304,19 +304,20 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
                 return;
             }
 
-            var puntosFlor = ronda.CalcularPuntosFlor(Context.User.Id);
+            var partidaTerminada = ronda.Fase == FaseRonda.Finalizada;
+            var textoFlor = partidaTerminada
+                ? $"🌸 ¡<@{Context.User.Id}> cantó FLOR ({ronda.CalcularPuntosFlor(Context.User.Id)} puntos)!"
+                : $"🌸 ¡<@{Context.User.Id}> cantó FLOR! (+3 puntos)";
 
-            await Context.Channel.SendMessageAsync(
-                $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó FLOR ({puntosFlor} puntos)!");
-
-            if (ronda.Fase == FaseRonda.Finalizada)
+            if (partidaTerminada)
             {
+                await Context.Channel.SendMessageAsync($"{GenerarTextoMarcador(ronda)}{textoFlor}");
                 await FinalizarYAnunciarRonda(ronda);
             }
             else
             {
                 await Context.Channel.SendMessageAsync(
-                    $"👉 Turno de <@{ronda.TurnoActual}>.",
+                    $"{GenerarTextoMarcador(ronda)}{textoFlor}",
                     components: ConstruirBotonesDeAccion(ronda));
             }
 
