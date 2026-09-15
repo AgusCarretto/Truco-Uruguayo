@@ -1075,6 +1075,83 @@ public class RondaTests
     }
 
     [Fact]
+    public void ResponderFlor_LaMiaEsFlor_GanaElDeMasPuntosYSumaSeisPuntos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+        ronda.CantarFlor(Jugador1);
+
+        ronda.ResponderFlor(Jugador2, "la_mia_es_flor");
+
+        // CalcularPuntosFlor(Jugador1) = 47 (2+4+5 de Oro), CalcularPuntosFlor(Jugador2) = 37
+        // (Caballo+Sota de Oro + 3 de Espada) — gana Jugador1.
+        Assert.Equal(6, ronda.PuntosJugador1);
+        Assert.Equal(0, ronda.PuntosJugador2);
+        Assert.Equal(EstadoRonda.JugandoCartas, ronda.Estado);
+        Assert.True(ronda.FlorCantada[Jugador1]);
+        Assert.True(ronda.FlorCantada[Jugador2]);
+        Assert.True(ronda.EnvidoCantado);
+        Assert.Equal(Jugador1, ronda.TurnoActual);
+    }
+
+    [Fact]
+    public void ResponderFlor_ConFlorEnvido_SubeDosPuntosYPasaAContraFlor()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+        ronda.CantarFlor(Jugador1);
+
+        ronda.ResponderFlor(Jugador2, "con_flor_envido");
+
+        Assert.Equal(8, ronda.PuntosFlorActuales);
+        Assert.Equal(EstadoRonda.RespondiendoContraFlor, ronda.Estado);
+        Assert.Equal(Jugador1, ronda.TurnoActual);
+    }
+
+    [Fact]
+    public void ResponderFlor_ContraFlorAlResto_PoneElRestoYPasaAContraFlor()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) },
+            puntosObjetivo: 15);
+        ronda.CantarFlor(Jugador1);
+
+        ronda.ResponderFlor(Jugador2, "contra_flor_al_resto");
+
+        Assert.Equal(15, ronda.PuntosFlorActuales); // 15 - max(0, 0)
+        Assert.Equal(EstadoRonda.RespondiendoContraFlor, ronda.Estado);
+        Assert.Equal(Jugador1, ronda.TurnoActual);
+    }
+
+    [Fact]
+    public void ResponderFlor_FueraDeTurno_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(11, Palo.Oro), new Carta(10, Palo.Oro), new Carta(3, Palo.Espada) });
+        ronda.CantarFlor(Jugador1);
+
+        var excepcion = Record.Exception(() => ronda.ResponderFlor(Jugador1, "la_mia_es_flor"));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
+    [Fact]
+    public void ResponderFlor_SinFlorPendiente_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        var excepcion = Record.Exception(() => ronda.ResponderFlor(Jugador1, "la_mia_es_flor"));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
+    [Fact]
     public void CantarFlor_SinFlor_TiraExcepcionYNoSumaPuntos()
     {
         var ronda = NuevaRondaConMazoFijo(

@@ -401,6 +401,57 @@ public class Ronda
         RegistrarActividad();
     }
 
+    public void ResponderFlor(ulong jugadorId, string accion)
+    {
+        if (jugadorId != TurnoActual)
+        {
+            throw new InvalidOperationException("No es el turno de este jugador.");
+        }
+
+        if (Estado != EstadoRonda.RespondiendoFlor)
+        {
+            throw new InvalidOperationException("No hay ninguna Flor pendiente de responder.");
+        }
+
+        var rival = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
+
+        switch (accion)
+        {
+            case "la_mia_es_flor":
+                var ganador = CalcularPuntosFlor(Jugador1Id) >= CalcularPuntosFlor(Jugador2Id) ? Jugador1Id : Jugador2Id;
+                AsignarPuntos(ganador, PuntosFlorActuales);
+                FlorCantada[Jugador1Id] = true;
+                FlorCantada[Jugador2Id] = true;
+                EnvidoCantado = true;
+
+                if (Fase != FaseRonda.Finalizada)
+                {
+                    Estado = EstadoRonda.JugandoCartas;
+                    TurnoActual = JugadorManoId;
+                }
+                break;
+
+            case "con_flor_envido":
+                _puntosFlorAntesDelUltimoAumento = PuntosFlorActuales;
+                PuntosFlorActuales += 2;
+                Estado = EstadoRonda.RespondiendoContraFlor;
+                TurnoActual = rival;
+                break;
+
+            case "contra_flor_al_resto":
+                _puntosFlorAntesDelUltimoAumento = PuntosFlorActuales;
+                PuntosFlorActuales = PuntosObjetivo - Math.Max(PuntosJugador1, PuntosJugador2);
+                Estado = EstadoRonda.RespondiendoContraFlor;
+                TurnoActual = rival;
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(accion), "Opcion de respuesta a la flor desconocida.");
+        }
+
+        RegistrarActividad();
+    }
+
     public void JugarCarta(ulong jugadorId, Carta carta)
     {
         if (Fase == FaseRonda.Finalizada)
