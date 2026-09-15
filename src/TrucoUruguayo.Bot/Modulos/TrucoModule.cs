@@ -94,7 +94,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             .Build();
 
         await RespondAsync(
-            $"⚔️ {usuario.Mention}, {Context.User.Mention} te desafía a una partida de Truco a {puntos} puntos por 🪙 {apuesta} monedas! (expira en 30s)",
+            $"⚔️ ¡El **{usuarioRetador.TituloEquipado ?? "Jugador"}** {Context.User.Mention} desafía a {usuario.Mention} a una partida de Truco a {puntos} puntos por 🪙 {apuesta} monedas! (expira en 30s)",
             components: componentes);
 
         var mensaje = await GetOriginalResponseAsync();
