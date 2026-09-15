@@ -977,6 +977,46 @@ public class RondaTests
         Assert.Equal(36, ronda.CalcularPuntosFlor(Jugador1));
     }
 
+    [Fact]
+    public void CantarFlor_ConFlor_MarcaFlorCantadaYSumaTresPuntos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        ronda.CantarFlor(Jugador1);
+
+        Assert.True(ronda.FlorCantada[Jugador1]);
+        Assert.Equal(3, ronda.PuntosJugador1);
+    }
+
+    [Fact]
+    public void CantarFlor_SinFlor_TiraExcepcionYNoSumaPuntos()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(6, Palo.Espada), new Carta(7, Palo.Basto), new Carta(3, Palo.Copa) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        var excepcion = Record.Exception(() => ronda.CantarFlor(Jugador1));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal("No tenés Flor, no seas fantasma.", excepcion.Message);
+        Assert.Equal(0, ronda.PuntosJugador1);
+    }
+
+    [Fact]
+    public void CantarFlor_FueraDeTurno_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) });
+
+        // NuevaRondaConMazoFijo pone a Jugador1 como mano, asi que a Jugador2 todavia no le toca.
+        var excepcion = Record.Exception(() => ronda.CantarFlor(Jugador2));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+    }
+
     private static Ronda NuevaRondaConMazoFijo(IEnumerable<Carta> manoJugador1, IEnumerable<Carta> manoJugador2, int puntosObjetivo = 15) =>
         new(Jugador1, Jugador2, Muestra, manoJugador1.ToList(), manoJugador2.ToList(), puntosObjetivo, jugadorManoId: Jugador1);
 }

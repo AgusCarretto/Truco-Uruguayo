@@ -64,6 +64,7 @@ public class Ronda
     public Carta? UltimaCartaMesaJ1 { get; private set; }
     public Carta? UltimaCartaMesaJ2 { get; private set; }
     public ulong? GanadorUltimaMano { get; private set; }
+    public Dictionary<ulong, bool> FlorCantada { get; private set; }
 
     public Ronda(ulong jugador1Id, ulong jugador2Id, int puntosObjetivo)
     {
@@ -85,6 +86,7 @@ public class Ronda
         Estado = EstadoRonda.EsperandoEnvido;
         Fase = FaseRonda.PrimeraMano;
         TurnoActual = JugadorManoId;
+        FlorCantada = new();
     }
 
     internal Ronda(ulong jugador1Id, ulong jugador2Id, Carta muestra, List<Carta> manoJugador1, List<Carta> manoJugador2, int puntosObjetivo, ulong jugadorManoId)
@@ -103,6 +105,7 @@ public class Ronda
         Estado = EstadoRonda.EsperandoEnvido;
         Fase = FaseRonda.PrimeraMano;
         TurnoActual = JugadorManoId;
+        FlorCantada = new();
     }
 
     public void CantarEnvido(ulong jugadorId, Canto canto)
@@ -343,6 +346,28 @@ public class Ronda
         return total;
     }
 
+    public void CantarFlor(ulong jugadorId)
+    {
+        if (jugadorId != TurnoActual)
+        {
+            throw new InvalidOperationException("Solo podés cantar Flor en tu turno.");
+        }
+
+        if (!PuedeCantarEnvido(jugadorId))
+        {
+            throw new InvalidOperationException("No se puede cantar Flor en este momento.");
+        }
+
+        if (!TieneFlor(jugadorId))
+        {
+            throw new InvalidOperationException("No tenés Flor, no seas fantasma.");
+        }
+
+        FlorCantada[jugadorId] = true;
+        AsignarPuntos(jugadorId, 3);
+        RegistrarActividad();
+    }
+
     public void JugarCarta(ulong jugadorId, Carta carta)
     {
         if (Fase == FaseRonda.Finalizada)
@@ -547,6 +572,7 @@ public class Ronda
         JugadorQueGritoTruco = null;
         ValorTrucoActual = 1;
         TurnoCantoTruco = null;
+        FlorCantada.Clear();
 
         Fase = FaseRonda.PrimeraMano;
         Estado = EstadoRonda.EsperandoEnvido;
