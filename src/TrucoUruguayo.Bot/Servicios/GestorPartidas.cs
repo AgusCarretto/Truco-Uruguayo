@@ -14,15 +14,18 @@ public class GestorPartidas
     private readonly DiscordSocketClient _client;
     private readonly UsuarioRepository _usuarioRepository;
     private readonly Timer _timerAfk;
+    private readonly TimeSpan _limiteReto;
 
     public ConcurrentDictionary<ulong, Ronda> PartidasActivas { get; } = new();
     public ConcurrentDictionary<ulong, ulong> JugadoresActivos { get; } = new();
     public ConcurrentDictionary<ulong, int> ApuestasActivas { get; } = new();
+    public ConcurrentDictionary<ulong, RetoPendiente> RetosPendientes { get; } = new();
 
-    public GestorPartidas(DiscordSocketClient client, UsuarioRepository usuarioRepository)
+    public GestorPartidas(DiscordSocketClient client, UsuarioRepository usuarioRepository, TimeSpan? limiteReto = null)
     {
         _client = client;
         _usuarioRepository = usuarioRepository;
+        _limiteReto = limiteReto ?? TimeSpan.FromSeconds(30);
         _timerAfk = new Timer(ChequearInactividadAsync, null, IntervaloChequeoAfk, IntervaloChequeoAfk);
     }
 
@@ -63,6 +66,56 @@ public class GestorPartidas
         JugadoresActivos.TryRemove(ronda.Jugador1Id, out _);
         JugadoresActivos.TryRemove(ronda.Jugador2Id, out _);
         ApuestasActivas.TryRemove(canalId, out _);
+    }
+
+    public bool TieneRetoPendiente(ulong retadorId) => RetosPendientes.ContainsKey(retadorId);
+
+    public bool RegistrarReto(RetoPendiente reto)
+    {
+        if (!RetosPendientes.TryAdd(reto.RetadorId, reto))
+        {
+            return false;
+        }
+
+        reto.TimerExpiracion = new Timer(ExpirarRetoAsync, reto.RetadorId, _limiteReto, Timeout.InfiniteTimeSpan);
+        return true;
+    }
+
+    public bool TryQuitarReto(ulong retadorId, out RetoPendiente? reto)
+    {
+        if (!RetosPendientes.TryRemove(retadorId, out reto))
+        {
+            return false;
+        }
+
+        reto.TimerExpiracion?.Dispose();
+        return true;
+    }
+
+    private async void ExpirarRetoAsync(object? state)
+    {
+        var retadorId = (ulong)state!;
+
+        if (!TryQuitarReto(retadorId, out var reto) || reto is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_client.GetChannel(reto.CanalId) is IMessageChannel canal)
+            {
+                await canal.ModifyMessageAsync(reto.MensajeId, mensaje =>
+                {
+                    mensaje.Content = $"⌛ El reto de <@{reto.RetadorId}> a <@{reto.RetadoId}> expiró (no se aceptó a tiempo).";
+                    mensaje.Components = new ComponentBuilder().Build();
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error expirando reto: {ex.Message}");
+        }
     }
 
     private async void ChequearInactividadAsync(object? state)
