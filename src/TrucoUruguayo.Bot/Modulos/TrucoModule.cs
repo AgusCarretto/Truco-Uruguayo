@@ -196,8 +196,10 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         componentes.WithButton("📊 Orden de las cartas", "ayuda_cartas", ButtonStyle.Secondary, row: 4);
 
+        var turnoTexto = ronda.TurnoActual == userId ? "✅ Es tu turno." : $"⏳ Turno de <@{ronda.TurnoActual}>.";
+
         await using var streamMano = await _generadorImagenes.GenerarManoAsync(mano);
-        await RespondWithFileAsync(streamMano, "mano.png", components: componentes.Build(), ephemeral: true);
+        await RespondWithFileAsync(streamMano, "mano.png", text: turnoTexto, components: componentes.Build(), ephemeral: true);
     }
 
     [ComponentInteraction("jugar_carta_*")]
