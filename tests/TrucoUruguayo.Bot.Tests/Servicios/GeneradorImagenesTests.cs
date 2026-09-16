@@ -71,6 +71,36 @@ public class GeneradorImagenesTests
         Assert.Equal(altoEsperado, imagenCombinada.Height);
     }
 
+    [Fact]
+    public async Task GenerarManoAsync_ConMazoClasico_CargaLosJpgYNoRompe()
+    {
+        var generador = new GeneradorImagenes();
+        var mano = new[] { new Carta(1, Palo.Espada), new Carta(7, Palo.Oro) };
+
+        await using var stream = await generador.GenerarManoAsync(mano, GeneradorImagenes.MazoClasico);
+
+        using var imagen = await Image.LoadAsync(stream);
+        Assert.True(imagen.Width > 0);
+        Assert.True(imagen.Height > 0);
+    }
+
+    [Fact]
+    public async Task GenerarMesaActualAsync_ConJugadasDeMazosDistintos_ComponeSinRomper()
+    {
+        var generador = new GeneradorImagenes();
+
+        await using var stream = await generador.GenerarMesaActualAsync(
+            new Carta(3, Palo.Oro),
+            new Carta(1, Palo.Espada), new Carta(7, Palo.Copa),
+            mazoJugada1: GeneradorImagenes.MazoClasico,
+            mazoJugada2: GeneradorImagenes.MazoBasico);
+
+        using var imagen = await Image.LoadAsync(stream);
+
+        var anchoEsperado = AnchoMuestraEsperado + ExtraPilaDorsoEsperado + 30 + AnchoJugadaEsperado + 10 + AnchoJugadaEsperado;
+        Assert.Equal(anchoEsperado, imagen.Width);
+    }
+
     private static async Task<Image> CargarYRedimensionarAsync(string ruta)
     {
         var imagen = await Image.LoadAsync(ruta);

@@ -10,4 +10,5 @@ public class Usuario
     public int Xp { get; set; }
     public int Nivel { get; set; }
     public string? TituloEquipado { get; set; }
+    public string MazoEquipado { get; set; } = "mazo_basico";
 }

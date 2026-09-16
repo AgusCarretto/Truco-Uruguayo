@@ -22,11 +22,13 @@ public class UsuarioRepositoryTests
         Assert.Equal(1000, registrado.Monedas);
         Assert.Equal(1, registrado.Nivel);
         Assert.Null(registrado.TituloEquipado);
+        Assert.Equal("mazo_basico", registrado.MazoEquipado);
         Assert.NotNull(consultado);
         Assert.Equal(1000, consultado!.Monedas);
         Assert.Equal("prueba", consultado.Nombre);
         Assert.Equal(1, consultado.Nivel);
         Assert.Null(consultado.TituloEquipado);
+        Assert.Equal("mazo_basico", consultado.MazoEquipado);
     }
 
     [Fact]
@@ -73,6 +75,59 @@ public class UsuarioRepositoryTests
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
 
         var exito = await repositorio.EquiparTituloAsync(usuario.Id, "Titulo Inventado");
+
+        Assert.False(exito);
+    }
+
+    [Fact]
+    public async Task EquiparMazoAsync_MazoBasico_SiempreExitosoSinNecesidadDeComprarlo()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var exito = await repositorio.EquiparMazoAsync(usuario.Id, "mazo_basico");
+
+        Assert.True(exito);
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal("mazo_basico", actualizado!.MazoEquipado);
+    }
+
+    [Fact]
+    public async Task EquiparMazoAsync_MazoClasicoSinComprar_DevuelveFalse()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var exito = await repositorio.EquiparMazoAsync(usuario.Id, "mazo_clasico");
+
+        Assert.False(exito);
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal("mazo_basico", actualizado!.MazoEquipado);
+    }
+
+    [Fact]
+    public async Task EquiparMazoAsync_MazoClasicoComprado_EquipaYDevuelveTrue()
+    {
+        var repositorioUsuarios = new UsuarioRepository(_connectionString);
+        var repositorioTienda = new TiendaRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 10_000);
+        await using var item = await ItemDePrueba.CrearAsync(_connectionString, precio: 8000, nombre: "Mazo Clásico");
+        await repositorioTienda.ComprarItemAsync(usuario.Id, item.Id);
+
+        var exito = await repositorioUsuarios.EquiparMazoAsync(usuario.Id, "mazo_clasico");
+
+        Assert.True(exito);
+        var actualizado = await repositorioUsuarios.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal("mazo_clasico", actualizado!.MazoEquipado);
+    }
+
+    [Fact]
+    public async Task EquiparMazoAsync_MazoInvalido_DevuelveFalse()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var exito = await repositorio.EquiparMazoAsync(usuario.Id, "mazo_inventado");
 
         Assert.False(exito);
     }

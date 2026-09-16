@@ -16,7 +16,7 @@ public sealed class ItemDePrueba : IAsyncDisposable
         Precio = precio;
     }
 
-    public static async Task<ItemDePrueba> CrearAsync(string connectionString, int precio = 100, bool activo = true)
+    public static async Task<ItemDePrueba> CrearAsync(string connectionString, int precio = 100, bool activo = true, string? nombre = null)
     {
         await using var conexion = new NpgsqlConnection(connectionString);
         await conexion.OpenAsync();
@@ -28,7 +28,7 @@ public sealed class ItemDePrueba : IAsyncDisposable
             RETURNING id
             """,
             conexion);
-        comando.Parameters.AddWithValue("Nombre", $"Item de prueba {Guid.NewGuid()}");
+        comando.Parameters.AddWithValue("Nombre", nombre ?? $"Item de prueba {Guid.NewGuid()}");
         comando.Parameters.AddWithValue("Descripcion", "Item creado por los tests");
         comando.Parameters.AddWithValue("Precio", precio);
         comando.Parameters.AddWithValue("Activo", activo);

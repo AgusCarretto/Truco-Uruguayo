@@ -20,7 +20,7 @@ public class UsuarioRepository
         await using var conexion = new NpgsqlConnection(_connectionString);
 
         const string sql = """
-            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado
+            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, mazo_equipado AS MazoEquipado
             FROM usuarios
             WHERE id = @Id
             """;
@@ -35,7 +35,7 @@ public class UsuarioRepository
         const string sql = """
             INSERT INTO usuarios (id, nombre, monedas, victorias, derrotas, xp)
             VALUES (@Id, @Nombre, @Monedas, 0, 0, 0)
-            RETURNING id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado
+            RETURNING id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, mazo_equipado AS MazoEquipado
             """;
 
         return await conexion.QuerySingleAsync<Usuario>(
@@ -77,7 +77,7 @@ public class UsuarioRepository
         var columna = orden == "xp" ? "xp" : "monedas";
 
         var sql = $"""
-            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado
+            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, mazo_equipado AS MazoEquipado
             FROM usuarios
             ORDER BY {columna} DESC
             LIMIT @Limite
@@ -233,6 +233,45 @@ public class UsuarioRepository
         const string sql = "UPDATE usuarios SET titulo_equipado = @Titulo WHERE id = @Id";
 
         await conexion.ExecuteAsync(sql, new { Titulo = titulo, Id = (long)discordId });
+
+        return true;
+    }
+
+    private static readonly HashSet<string> MazosValidos = ["mazo_basico", "mazo_clasico"];
+    private const string NombreItemMazoClasico = "Mazo Clásico";
+
+    public async Task<bool> EquiparMazoAsync(ulong discordId, string mazo)
+    {
+        if (!MazosValidos.Contains(mazo))
+        {
+            return false;
+        }
+
+        if (mazo == "mazo_clasico")
+        {
+            await using var conexionCheck = new NpgsqlConnection(_connectionString);
+
+            const string sqlPoseeMazo = """
+                SELECT 1
+                FROM inventario_usuarios
+                JOIN tienda_items ON tienda_items.id = inventario_usuarios.item_id
+                WHERE inventario_usuarios.usuario_id = @Id AND tienda_items.nombre = @Nombre
+                """;
+
+            var poseeMazo = await conexionCheck.QuerySingleOrDefaultAsync<int?>(
+                sqlPoseeMazo, new { Id = (long)discordId, Nombre = NombreItemMazoClasico });
+
+            if (poseeMazo is null)
+            {
+                return false;
+            }
+        }
+
+        await using var conexion = new NpgsqlConnection(_connectionString);
+
+        const string sqlActualizar = "UPDATE usuarios SET mazo_equipado = @Mazo WHERE id = @Id";
+
+        await conexion.ExecuteAsync(sqlActualizar, new { Mazo = mazo, Id = (long)discordId });
 
         return true;
     }

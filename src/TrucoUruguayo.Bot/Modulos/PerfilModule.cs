@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using TrucoUruguayo.Bot.Datos;
 using TrucoUruguayo.Bot.Modelo;
+using TrucoUruguayo.Bot.Servicios;
 
 namespace TrucoUruguayo.Bot.Modulos;
 
@@ -44,6 +45,7 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
             .AddField("✅ Victorias", usuarioDb.Victorias, true)
             .AddField("❌ Derrotas", usuarioDb.Derrotas, true)
             .AddField("🎮 Nivel y Experiencia", $"**Nivel {usuarioDb.Nivel}**\n{GenerarBarraExp(xpNivelActual, xpNecesaria)}")
+            .AddField("🃏 Mazo equipado", NombreLegibleMazo(usuarioDb.MazoEquipado), true)
             .WithColor(Color.Gold);
 
         if (equipados.Count > 0)
@@ -103,6 +105,27 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
 
         await RespondAsync($"✅ Ahora tenés equipado: **{titulo}**");
     }
+
+    [SlashCommand("mazo_equipar", "Elegi con que mazo se ven tus cartas")]
+    public async Task MazoEquiparAsync(
+        [Summary("mazo", "Que mazo equipar")]
+        [Choice("Básico", GeneradorImagenes.MazoBasico)]
+        [Choice("Clásico", GeneradorImagenes.MazoClasico)]
+        string mazo)
+    {
+        var exito = await _usuarioRepository.EquiparMazoAsync(Context.User.Id, mazo);
+
+        if (!exito)
+        {
+            await RespondAsync("🔒 Todavía no compraste ese mazo en la tienda.", ephemeral: true);
+            return;
+        }
+
+        await RespondAsync($"✅ Ahora tenés equipado el mazo: **{NombreLegibleMazo(mazo)}**");
+    }
+
+    private static string NombreLegibleMazo(string mazo) =>
+        mazo == GeneradorImagenes.MazoClasico ? "Clásico" : "Básico";
 
     private string GenerarBarraExp(int expActual, int expNecesaria, int longitudBarra = 10)
     {

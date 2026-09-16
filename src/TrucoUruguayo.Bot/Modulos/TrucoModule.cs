@@ -188,6 +188,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        var mazoEquipado = (await _usuarioRepository.ObtenerUsuarioAsync(userId))?.MazoEquipado ?? GeneradorImagenes.MazoBasico;
+
         var componentes = new ComponentBuilder();
         for (var i = 0; i < mano.Count; i++)
         {
@@ -198,7 +200,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         var turnoTexto = ronda.TurnoActual == userId ? "✅ Es tu turno." : $"⏳ Turno de <@{ronda.TurnoActual}>.";
 
-        await using var streamMano = await _generadorImagenes.GenerarManoAsync(mano);
+        await using var streamMano = await _generadorImagenes.GenerarManoAsync(mano, mazoEquipado);
         await RespondWithFileAsync(streamMano, "mano.png", text: turnoTexto, components: componentes.Build(), ephemeral: true);
     }
 
@@ -260,7 +262,10 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             textoJugada += $" ¡<@{ronda.GanadorUltimaMano}> ganó la mano!";
         }
 
-        await using (var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(muestraAntes, jugada1Mesa, jugada2Mesa))
+        var mazoJugador1 = (await _usuarioRepository.ObtenerUsuarioAsync(ronda.Jugador1Id))?.MazoEquipado ?? GeneradorImagenes.MazoBasico;
+        var mazoJugador2 = (await _usuarioRepository.ObtenerUsuarioAsync(ronda.Jugador2Id))?.MazoEquipado ?? GeneradorImagenes.MazoBasico;
+
+        await using (var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(muestraAntes, jugada1Mesa, jugada2Mesa, mazoJugador1, mazoJugador2))
         {
             await Context.Channel.SendFileAsync(
                 streamMesa,
