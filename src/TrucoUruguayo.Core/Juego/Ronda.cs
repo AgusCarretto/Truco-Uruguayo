@@ -36,7 +36,7 @@ public class Ronda
     private CantoTruco? _cantoTrucoPendiente;
     private EstadoRonda _estadoAntesDelTruco;
     private ulong _turnoAntesDelTruco;
-    private int _puntosFlorAntesDelUltimoAumento;
+    private int _puntosFlorSiNoQuiere;
 
     public ulong Jugador1Id { get; }
     public ulong Jugador2Id { get; }
@@ -67,6 +67,7 @@ public class Ronda
     public ulong? GanadorUltimaMano { get; private set; }
     public Dictionary<ulong, bool> FlorCantada { get; private set; }
     public int PuntosFlorActuales { get; private set; }
+    public bool ContraFlorEsAlResto { get; private set; }
 
     public Ronda(ulong jugador1Id, ulong jugador2Id, int puntosObjetivo)
     {
@@ -432,15 +433,16 @@ public class Ronda
                 break;
 
             case "con_flor_envido":
-                _puntosFlorAntesDelUltimoAumento = PuntosFlorActuales;
                 PuntosFlorActuales += 2;
+                _puntosFlorSiNoQuiere = 5;
+                ContraFlorEsAlResto = false;
                 Estado = EstadoRonda.RespondiendoContraFlor;
                 TurnoActual = rival;
                 break;
 
             case "contra_flor_al_resto":
-                _puntosFlorAntesDelUltimoAumento = PuntosFlorActuales;
-                PuntosFlorActuales = PuntosObjetivo - Math.Max(PuntosJugador1, PuntosJugador2);
+                _puntosFlorSiNoQuiere = 3;
+                ContraFlorEsAlResto = true;
                 Estado = EstadoRonda.RespondiendoContraFlor;
                 TurnoActual = rival;
                 break;
@@ -469,11 +471,22 @@ public class Ronda
         if (quiere)
         {
             var ganador = CalcularPuntosFlor(Jugador1Id) >= CalcularPuntosFlor(Jugador2Id) ? Jugador1Id : Jugador2Id;
-            AsignarPuntos(ganador, PuntosFlorActuales);
+
+            if (ContraFlorEsAlResto)
+            {
+                // Contra Flor al Resto: quien gana la comparacion se lleva la partida entera,
+                // sin importar los puntos que tuviera acumulados hasta ahora.
+                var puntosParaGanar = PuntosObjetivo - (ganador == Jugador1Id ? PuntosJugador1 : PuntosJugador2);
+                AsignarPuntos(ganador, puntosParaGanar);
+            }
+            else
+            {
+                AsignarPuntos(ganador, PuntosFlorActuales);
+            }
         }
         else
         {
-            AsignarPuntos(proponente, _puntosFlorAntesDelUltimoAumento);
+            AsignarPuntos(proponente, _puntosFlorSiNoQuiere);
         }
 
         FlorCantada[Jugador1Id] = true;
@@ -700,7 +713,8 @@ public class Ronda
         TurnoCantoTruco = null;
         FlorCantada.Clear();
         PuntosFlorActuales = 0;
-        _puntosFlorAntesDelUltimoAumento = 0;
+        _puntosFlorSiNoQuiere = 0;
+        ContraFlorEsAlResto = false;
 
         Fase = FaseRonda.PrimeraMano;
         Estado = EstadoRonda.EsperandoEnvido;

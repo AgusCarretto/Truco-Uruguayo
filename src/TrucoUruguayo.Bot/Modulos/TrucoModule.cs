@@ -392,8 +392,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         if (ronda.Estado == EstadoRonda.RespondiendoContraFlor)
         {
+            var nombreCantoFlor = ronda.ContraFlorEsAlResto ? "Contra Flor al Resto" : "Con Flor Envido";
             await Context.Channel.SendMessageAsync(
-                $"{GenerarTextoMarcador(ronda)}🔥 ¡<@{Context.User.Id}> retrucó la Flor! Turno de <@{ronda.TurnoActual}>.",
+                $"{GenerarTextoMarcador(ronda)}☠️ ¡<@{Context.User.Id}> cantó {nombreCantoFlor}! <@{ronda.TurnoActual}>, ¿quiere o no quiere?",
                 components: ConstruirBotonesDeAccion(ronda));
             await DeferAsync();
             return;
@@ -429,6 +430,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var quiere = accion == "quiero";
+        var esAlResto = ronda.ContraFlorEsAlResto;
         var puntosJugador1Antes = ronda.PuntosJugador1;
         var puntosJugador2Antes = ronda.PuntosJugador2;
 
@@ -445,10 +447,24 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         var deltaJugador1 = ronda.PuntosJugador1 - puntosJugador1Antes;
         var ganador = deltaJugador1 > 0 ? ronda.Jugador1Id : ronda.Jugador2Id;
         var puntosGanados = deltaJugador1 > 0 ? deltaJugador1 : ronda.PuntosJugador2 - puntosJugador2Antes;
+        var nombreCantoFlor = esAlResto ? "Contra Flor al Resto" : "Con Flor Envido";
 
-        var textoResultado = quiere
-            ? $"🌸 ¡<@{ganador}> gana el cruce de Flores y se lleva {puntosGanados} puntos!"
-            : $"❌ <@{Context.User.Id}> no quiso. <@{ganador}> se lleva {puntosGanados} puntos de Flor.";
+        string textoResultado;
+        if (!quiere)
+        {
+            textoResultado = $"❌ <@{Context.User.Id}> no quiso. <@{ganador}> se lleva {puntosGanados} puntos de Flor.";
+        }
+        else if (esAlResto)
+        {
+            var tantosJugador1 = ronda.CalcularPuntosFlor(ronda.Jugador1Id);
+            var tantosJugador2 = ronda.CalcularPuntosFlor(ronda.Jugador2Id);
+            textoResultado = $"☠️ ¡Contra Flor al Resto! <@{ronda.Jugador1Id}> tenía {tantosJugador1} de Flor, "
+                + $"<@{ronda.Jugador2Id}> tenía {tantosJugador2} de Flor. ¡<@{ganador}> se lleva la PARTIDA!";
+        }
+        else
+        {
+            textoResultado = $"🌸 ¡<@{ganador}> gana el {nombreCantoFlor} y se lleva {puntosGanados} puntos!";
+        }
 
         if (ronda.Fase == FaseRonda.Finalizada)
         {

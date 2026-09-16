@@ -1111,7 +1111,7 @@ public class RondaTests
     }
 
     [Fact]
-    public void ResponderFlor_ContraFlorAlResto_PoneElRestoYPasaAContraFlor()
+    public void ResponderFlor_ContraFlorAlResto_PasaAContraFlorMarcadaComoAlResto()
     {
         var ronda = NuevaRondaConMazoFijo(
             new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
@@ -1121,7 +1121,7 @@ public class RondaTests
 
         ronda.ResponderFlor(Jugador2, "contra_flor_al_resto");
 
-        Assert.Equal(15, ronda.PuntosFlorActuales); // 15 - max(0, 0)
+        Assert.True(ronda.ContraFlorEsAlResto);
         Assert.Equal(EstadoRonda.RespondiendoContraFlor, ronda.Estado);
         Assert.Equal(Jugador1, ronda.TurnoActual);
     }
@@ -1169,7 +1169,7 @@ public class RondaTests
     }
 
     [Fact]
-    public void ResponderContraFlor_NoQuieroDespuesDeConFlorEnvido_ElQuePropusoGanaSeisPuntos()
+    public void ResponderContraFlor_NoQuieroDespuesDeConFlorEnvido_ElQuePropusoGanaCincoPuntos()
     {
         var ronda = NuevaRondaConMazoFijo(
             new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
@@ -1180,12 +1180,12 @@ public class RondaTests
         ronda.ResponderContraFlor(Jugador1, quiere: false);
 
         Assert.Equal(0, ronda.PuntosJugador1);
-        Assert.Equal(6, ronda.PuntosJugador2);
+        Assert.Equal(5, ronda.PuntosJugador2);
         Assert.Equal(EstadoRonda.JugandoCartas, ronda.Estado);
     }
 
     [Fact]
-    public void ResponderContraFlor_NoQuieroDespuesDeContraFlorAlResto_ElQuePropusoGanaSeisPuntosNoElResto()
+    public void ResponderContraFlor_NoQuieroDespuesDeContraFlorAlResto_ElQuePropusoGanaTresPuntosNoElResto()
     {
         var ronda = NuevaRondaConMazoFijo(
             new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
@@ -1197,7 +1197,7 @@ public class RondaTests
         ronda.ResponderContraFlor(Jugador1, quiere: false);
 
         Assert.Equal(0, ronda.PuntosJugador1);
-        Assert.Equal(6, ronda.PuntosJugador2);
+        Assert.Equal(3, ronda.PuntosJugador2);
     }
 
     [Fact]
