@@ -11,6 +11,7 @@ public class GeneradorImagenesTests
     private const int AnchoCartaEsperado = 100;
     private const int AnchoMuestraEsperado = 75;
     private const int AnchoJugadaEsperado = 110;
+    private const int ExtraPilaDorsoEsperado = 12;
 
     [Fact]
     public async Task GenerarMesaActualAsync_SoloMuestra_DevuelveUnPngDelAnchoRedimensionado()
@@ -21,7 +22,7 @@ public class GeneradorImagenesTests
 
         Assert.Equal(0, stream.Position);
         using var imagen = await Image.LoadAsync(stream);
-        Assert.Equal(AnchoMuestraEsperado, imagen.Width);
+        Assert.Equal(AnchoMuestraEsperado + ExtraPilaDorsoEsperado, imagen.Width);
         Assert.True(imagen.Height > 0);
     }
 
@@ -35,8 +36,8 @@ public class GeneradorImagenesTests
 
         using var imagen = await Image.LoadAsync(stream);
 
-        // muestra (75px, mas chica) + margen de grupo (30) + 2 jugadas de 110px + margen entre ellas (10)
-        var anchoEsperado = AnchoMuestraEsperado + 30 + AnchoJugadaEsperado + 10 + AnchoJugadaEsperado;
+        // muestra (75px, mas chica) + pila de dorso detras (12) + margen de grupo (30) + 2 jugadas de 110px + margen entre ellas (10)
+        var anchoEsperado = AnchoMuestraEsperado + ExtraPilaDorsoEsperado + 30 + AnchoJugadaEsperado + 10 + AnchoJugadaEsperado;
         Assert.Equal(anchoEsperado, imagen.Width);
     }
 
