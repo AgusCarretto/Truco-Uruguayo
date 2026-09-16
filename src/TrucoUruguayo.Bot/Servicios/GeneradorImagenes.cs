@@ -15,6 +15,13 @@ public class GeneradorImagenes
     private const int MargenPilaDorso = 6;
     private const int CantidadDorsosEnPila = 2;
 
+    // El lienzo de la mesa es de tamano fijo (no crece/encoge segun cuantas cartas haya en
+    // juego) y las cartas se dibujan con un margen respecto al borde, para que el fondo de
+    // madera nunca "salte" de tamano entre un mensaje y el siguiente de la misma partida.
+    public const int AnchoLienzoMesa = 420;
+    public const int AltoLienzoMesa = 260;
+    private const int MargenBorde = 30;
+
     public const string MazoBasico = "mazo_basico";
     public const string MazoClasico = "mazo_clasico";
 
@@ -97,35 +104,30 @@ public class GeneradorImagenes
         var extraPila = MargenPilaDorso * CantidadDorsosEnPila;
         var anchoMuestraConPila = imagenMuestra.Width + extraPila;
         var altoMuestraConPila = imagenMuestra.Height + extraPila;
+        var altoDisponible = AltoLienzoMesa - 2 * MargenBorde;
 
-        var anchoJugadas = jugadas.Sum(imagen => imagen.Width) + MargenEntreCartas * Math.Max(0, jugadas.Count - 1);
-        var espacioAntesDeJugadas = jugadas.Count > 0 ? MargenEntreGrupos : 0;
-        var anchoTotal = anchoMuestraConPila + espacioAntesDeJugadas + anchoJugadas;
-        var altoMaximo = Math.Max(altoMuestraConPila, jugadas.Count > 0 ? jugadas.Max(imagen => imagen.Height) : 0);
-
-        using var imagenFondo = await CargarFondoMaderaAsync(anchoTotal, altoMaximo);
-        using var lienzo = new Image<Rgba32>(anchoTotal, altoMaximo);
+        using var imagenFondo = await CargarFondoMaderaAsync(AnchoLienzoMesa, AltoLienzoMesa);
+        using var lienzo = new Image<Rgba32>(AnchoLienzoMesa, AltoLienzoMesa);
 
         lienzo.Mutate(contexto =>
         {
             contexto.DrawImage(imagenFondo, new Point(0, 0), 1f);
 
-            // El grupo muestra+pila es mas chico que las jugadas: se centra verticalmente, lo
-            // que lo deja un poco mas abajo que el borde superior donde arrancan las jugadas.
-            var offsetYGrupoMuestra = (altoMaximo - altoMuestraConPila) / 2;
+            var offsetYGrupoMuestra = MargenBorde + (altoDisponible - altoMuestraConPila) / 2;
 
             for (var i = 1; i <= CantidadDorsosEnPila; i++)
             {
                 var desplazamiento = MargenPilaDorso * i;
-                contexto.DrawImage(imagenDorso, new Point(desplazamiento, offsetYGrupoMuestra + desplazamiento), 1f);
+                contexto.DrawImage(imagenDorso, new Point(MargenBorde + desplazamiento, offsetYGrupoMuestra + desplazamiento), 1f);
             }
 
-            contexto.DrawImage(imagenMuestra, new Point(0, offsetYGrupoMuestra), 1f);
+            contexto.DrawImage(imagenMuestra, new Point(MargenBorde, offsetYGrupoMuestra), 1f);
 
-            var posicionX = anchoMuestraConPila + espacioAntesDeJugadas;
+            var posicionX = MargenBorde + anchoMuestraConPila + MargenEntreGrupos;
             foreach (var imagenJugada in jugadas)
             {
-                contexto.DrawImage(imagenJugada, new Point(posicionX, (altoMaximo - imagenJugada.Height) / 2), 1f);
+                var offsetYJugada = MargenBorde + (altoDisponible - imagenJugada.Height) / 2;
+                contexto.DrawImage(imagenJugada, new Point(posicionX, offsetYJugada), 1f);
                 posicionX += imagenJugada.Width + MargenEntreCartas;
             }
         });
