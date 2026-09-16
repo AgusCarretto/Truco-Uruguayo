@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <None Include="assets\cartas\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="assets\fondos\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
