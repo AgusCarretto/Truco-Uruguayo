@@ -55,7 +55,7 @@ public class GeneradorImagenesTests
 
         using var imagenCombinada = await Image.LoadAsync(stream);
 
-        var carpetaCartas = Path.Combine(AppContext.BaseDirectory, "assets", "cartas");
+        var carpetaCartas = Path.Combine(AppContext.BaseDirectory, "assets", "cartas", "mazo_basico");
         using var carta1 = await CargarYRedimensionarAsync(Path.Combine(carpetaCartas, "1_espada.png"));
         using var carta2 = await CargarYRedimensionarAsync(Path.Combine(carpetaCartas, "7_oro.png"));
         using var carta3 = await CargarYRedimensionarAsync(Path.Combine(carpetaCartas, "12_copa.png"));

@@ -13,7 +13,7 @@ public class GeneradorImagenes
     private const int MargenEntreCartas = 10;
     private const int MargenEntreGrupos = 30;
 
-    private static readonly string CarpetaCartas = Path.Combine(AppContext.BaseDirectory, "assets", "cartas");
+    private static readonly string CarpetaCartas = Path.Combine(AppContext.BaseDirectory, "assets", "cartas", "mazo_basico");
 
     public async Task<MemoryStream> GenerarManoAsync(IEnumerable<Carta> cartas)
     {
