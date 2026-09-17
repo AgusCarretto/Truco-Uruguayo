@@ -45,7 +45,7 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
             .AddField("✅ Victorias", usuarioDb.Victorias, true)
             .AddField("❌ Derrotas", usuarioDb.Derrotas, true)
             .AddField("🎮 Nivel y Experiencia", $"**Nivel {usuarioDb.Nivel}**\n{GenerarBarraExp(xpNivelActual, xpNecesaria)}")
-            .AddField("🃏 Mazo equipado", NombreLegibleMazo(usuarioDb.MazoEquipado), true)
+            .AddField("🪵 Fondo de mesa", NombreLegibleFondo(usuarioDb.FondoEquipado), true)
             .WithColor(Color.Gold);
 
         if (equipados.Count > 0)
@@ -106,26 +106,33 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
         await RespondAsync($"✅ Ahora tenés equipado: **{titulo}**");
     }
 
-    [SlashCommand("mazo_equipar", "Elegi con que mazo se ven tus cartas")]
-    public async Task MazoEquiparAsync(
-        [Summary("mazo", "Que mazo equipar")]
-        [Choice("Básico", GeneradorImagenes.MazoBasico)]
-        [Choice("Clásico", GeneradorImagenes.MazoClasico)]
-        string mazo)
+    [SlashCommand("fondo_equipar", "Elegi el fondo de la mesa donde se juegan las cartas")]
+    public async Task FondoEquiparAsync(
+        [Summary("fondo", "Que fondo equipar")]
+        [Choice("Madera", GeneradorImagenes.FondoMadera)]
+        [Choice("Verde Liso", GeneradorImagenes.FondoVerdeliso)]
+        [Choice("Póker", GeneradorImagenes.FondoPoker)]
+        [Choice("Madera Oscura", GeneradorImagenes.FondoMaderaOscura)]
+        string fondo)
     {
-        var exito = await _usuarioRepository.EquiparMazoAsync(Context.User.Id, mazo);
+        var exito = await _usuarioRepository.EquiparFondoAsync(Context.User.Id, fondo);
 
         if (!exito)
         {
-            await RespondAsync("🔒 Todavía no compraste ese mazo en la tienda.", ephemeral: true);
+            await RespondAsync("🔒 Todavía no compraste ese fondo en la tienda.", ephemeral: true);
             return;
         }
 
-        await RespondAsync($"✅ Ahora tenés equipado el mazo: **{NombreLegibleMazo(mazo)}**");
+        await RespondAsync($"✅ Ahora tenés equipado el fondo: **{NombreLegibleFondo(fondo)}**");
     }
 
-    private static string NombreLegibleMazo(string mazo) =>
-        mazo == GeneradorImagenes.MazoClasico ? "Clásico" : "Básico";
+    private static string NombreLegibleFondo(string fondo) => fondo switch
+    {
+        GeneradorImagenes.FondoVerdeliso => "Verde Liso",
+        GeneradorImagenes.FondoPoker => "Póker",
+        GeneradorImagenes.FondoMaderaOscura => "Madera Oscura",
+        _ => "Madera",
+    };
 
     private string GenerarBarraExp(int expActual, int expNecesaria, int longitudBarra = 10)
     {

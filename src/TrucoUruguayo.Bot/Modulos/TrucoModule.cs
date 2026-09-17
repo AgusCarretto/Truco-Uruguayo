@@ -132,7 +132,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(mensaje => mensaje.Components = new ComponentBuilder().Build());
 
-        await using var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(ronda.Muestra, null, null);
+        var fondoEquipado = await ObtenerFondoDeLaMesaAsync(ronda);
+        await using var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(ronda.Muestra, null, null, fondoEquipado);
         await Context.Channel.SendFileAsync(
             streamMesa,
             "mesa.png",
@@ -188,8 +189,6 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        var mazoEquipado = (await _usuarioRepository.ObtenerUsuarioAsync(userId))?.MazoEquipado ?? GeneradorImagenes.MazoBasico;
-
         var componentes = new ComponentBuilder();
         for (var i = 0; i < mano.Count; i++)
         {
@@ -200,7 +199,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         var turnoTexto = ronda.TurnoActual == userId ? "✅ Es tu turno." : $"⏳ Turno de <@{ronda.TurnoActual}>.";
 
-        await using var streamMano = await _generadorImagenes.GenerarManoAsync(mano, mazoEquipado);
+        await using var streamMano = await _generadorImagenes.GenerarManoAsync(mano);
         await RespondWithFileAsync(streamMano, "mano.png", text: turnoTexto, components: componentes.Build(), ephemeral: true);
     }
 
@@ -262,10 +261,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             textoJugada += $" ¡<@{ronda.GanadorUltimaMano}> ganó la mano!";
         }
 
-        var mazoJugador1 = (await _usuarioRepository.ObtenerUsuarioAsync(ronda.Jugador1Id))?.MazoEquipado ?? GeneradorImagenes.MazoBasico;
-        var mazoJugador2 = (await _usuarioRepository.ObtenerUsuarioAsync(ronda.Jugador2Id))?.MazoEquipado ?? GeneradorImagenes.MazoBasico;
+        var fondoEquipado = await ObtenerFondoDeLaMesaAsync(ronda);
 
-        await using (var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(muestraAntes, jugada1Mesa, jugada2Mesa, mazoJugador1, mazoJugador2))
+        await using (var streamMesa = await _generadorImagenes.GenerarMesaActualAsync(muestraAntes, jugada1Mesa, jugada2Mesa, fondoEquipado))
         {
             await Context.Channel.SendFileAsync(
                 streamMesa,
@@ -687,9 +685,16 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync();
     }
 
+    // El fondo de la mesa (compartida entre los dos jugadores) es el que tenga equipado
+    // quien reto la partida, para que no cambie de imagen a imagen si cada uno tiene uno
+    // distinto.
+    private async Task<string> ObtenerFondoDeLaMesaAsync(Ronda ronda) =>
+        (await _usuarioRepository.ObtenerUsuarioAsync(ronda.Jugador1Id))?.FondoEquipado ?? GeneradorImagenes.FondoMadera;
+
     private async Task EnviarNuevaRondaAsync(Ronda ronda)
     {
-        await using var streamMesaNueva = await _generadorImagenes.GenerarMesaActualAsync(ronda.Muestra, null, null);
+        var fondoEquipado = await ObtenerFondoDeLaMesaAsync(ronda);
+        await using var streamMesaNueva = await _generadorImagenes.GenerarMesaActualAsync(ronda.Muestra, null, null, fondoEquipado);
         await Context.Channel.SendFileAsync(
             streamMesaNueva,
             "mesa.png",

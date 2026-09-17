@@ -1,4 +1,5 @@
 using TrucoUruguayo.Bot.Datos;
+using TrucoUruguayo.Bot.Servicios;
 using TrucoUruguayo.Bot.Tests.Helpers;
 using Xunit;
 
@@ -22,13 +23,13 @@ public class UsuarioRepositoryTests
         Assert.Equal(1000, registrado.Monedas);
         Assert.Equal(1, registrado.Nivel);
         Assert.Null(registrado.TituloEquipado);
-        Assert.Equal("mazo_basico", registrado.MazoEquipado);
+        Assert.Equal(GeneradorImagenes.FondoMadera, registrado.FondoEquipado);
         Assert.NotNull(consultado);
         Assert.Equal(1000, consultado!.Monedas);
         Assert.Equal("prueba", consultado.Nombre);
         Assert.Equal(1, consultado.Nivel);
         Assert.Null(consultado.TituloEquipado);
-        Assert.Equal("mazo_basico", consultado.MazoEquipado);
+        Assert.Equal(GeneradorImagenes.FondoMadera, consultado.FondoEquipado);
     }
 
     [Fact]
@@ -80,54 +81,54 @@ public class UsuarioRepositoryTests
     }
 
     [Fact]
-    public async Task EquiparMazoAsync_MazoBasico_SiempreExitosoSinNecesidadDeComprarlo()
+    public async Task EquiparFondoAsync_FondoMadera_SiempreExitosoSinNecesidadDeComprarlo()
     {
         var repositorio = new UsuarioRepository(_connectionString);
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
 
-        var exito = await repositorio.EquiparMazoAsync(usuario.Id, "mazo_basico");
+        var exito = await repositorio.EquiparFondoAsync(usuario.Id, GeneradorImagenes.FondoMadera);
 
         Assert.True(exito);
         var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
-        Assert.Equal("mazo_basico", actualizado!.MazoEquipado);
+        Assert.Equal(GeneradorImagenes.FondoMadera, actualizado!.FondoEquipado);
     }
 
     [Fact]
-    public async Task EquiparMazoAsync_MazoClasicoSinComprar_DevuelveFalse()
+    public async Task EquiparFondoAsync_FondoComprableSinComprar_DevuelveFalse()
     {
         var repositorio = new UsuarioRepository(_connectionString);
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
 
-        var exito = await repositorio.EquiparMazoAsync(usuario.Id, "mazo_clasico");
+        var exito = await repositorio.EquiparFondoAsync(usuario.Id, GeneradorImagenes.FondoPoker);
 
         Assert.False(exito);
         var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
-        Assert.Equal("mazo_basico", actualizado!.MazoEquipado);
+        Assert.Equal(GeneradorImagenes.FondoMadera, actualizado!.FondoEquipado);
     }
 
     [Fact]
-    public async Task EquiparMazoAsync_MazoClasicoComprado_EquipaYDevuelveTrue()
+    public async Task EquiparFondoAsync_FondoComprado_EquipaYDevuelveTrue()
     {
         var repositorioUsuarios = new UsuarioRepository(_connectionString);
         var repositorioTienda = new TiendaRepository(_connectionString);
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 10_000);
-        await using var item = await ItemDePrueba.CrearAsync(_connectionString, precio: 8000, nombre: "Mazo Clásico");
+        await using var item = await ItemDePrueba.CrearAsync(_connectionString, precio: 8000, nombre: "Fondo Póker");
         await repositorioTienda.ComprarItemAsync(usuario.Id, item.Id);
 
-        var exito = await repositorioUsuarios.EquiparMazoAsync(usuario.Id, "mazo_clasico");
+        var exito = await repositorioUsuarios.EquiparFondoAsync(usuario.Id, GeneradorImagenes.FondoPoker);
 
         Assert.True(exito);
         var actualizado = await repositorioUsuarios.ObtenerUsuarioAsync(usuario.Id);
-        Assert.Equal("mazo_clasico", actualizado!.MazoEquipado);
+        Assert.Equal(GeneradorImagenes.FondoPoker, actualizado!.FondoEquipado);
     }
 
     [Fact]
-    public async Task EquiparMazoAsync_MazoInvalido_DevuelveFalse()
+    public async Task EquiparFondoAsync_FondoInvalido_DevuelveFalse()
     {
         var repositorio = new UsuarioRepository(_connectionString);
         await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
 
-        var exito = await repositorio.EquiparMazoAsync(usuario.Id, "mazo_inventado");
+        var exito = await repositorio.EquiparFondoAsync(usuario.Id, "fondo_inventado");
 
         Assert.False(exito);
     }

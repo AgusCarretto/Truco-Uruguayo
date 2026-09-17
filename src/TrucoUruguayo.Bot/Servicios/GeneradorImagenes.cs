@@ -16,25 +16,22 @@ public class GeneradorImagenes
     private const int CantidadDorsosEnPila = 2;
 
     // El lienzo de la mesa es de tamano fijo (no crece/encoge segun cuantas cartas haya en
-    // juego) y las cartas se dibujan con un margen respecto al borde, para que el fondo de
-    // madera nunca "salte" de tamano entre un mensaje y el siguiente de la misma partida.
+    // juego) y las cartas se dibujan con un margen respecto al borde, para que el fondo
+    // nunca "salte" de tamano entre un mensaje y el siguiente de la misma partida.
     public const int AnchoLienzoMesa = 420;
     public const int AltoLienzoMesa = 260;
     private const int MargenBorde = 30;
 
-    public const string MazoBasico = "mazo_basico";
-    public const string MazoClasico = "mazo_clasico";
+    public const string FondoMadera = "fondo_madera";
+    public const string FondoMaderaOscura = "fondo_maderaOscura";
+    public const string FondoPoker = "fondo_poker";
+    public const string FondoVerdeliso = "fondo_verdeliso";
 
-    private static readonly Dictionary<string, string> ExtensionPorMazo = new()
-    {
-        [MazoBasico] = "png",
-        [MazoClasico] = "jpg",
-    };
-
+    private static readonly string CarpetaCartas = Path.Combine(AppContext.BaseDirectory, "assets", "cartas", "mazo_basico");
     private static readonly string RutaDorso = Path.Combine(AppContext.BaseDirectory, "assets", "cartas", "dorso.png");
-    private static readonly string RutaFondoMadera = Path.Combine(AppContext.BaseDirectory, "assets", "fondos", "fondo_madera.jpg");
+    private static readonly string CarpetaFondos = Path.Combine(AppContext.BaseDirectory, "assets", "fondos");
 
-    public async Task<MemoryStream> GenerarManoAsync(IEnumerable<Carta> cartas, string nombreMazo = MazoBasico)
+    public async Task<MemoryStream> GenerarManoAsync(IEnumerable<Carta> cartas)
     {
         var imagenesCartas = new List<Image<Rgba32>>();
 
@@ -42,7 +39,7 @@ public class GeneradorImagenes
         {
             foreach (var carta in cartas)
             {
-                imagenesCartas.Add(await CargarCartaAsync(carta, nombreMazo));
+                imagenesCartas.Add(await CargarCartaAsync(carta));
             }
 
             var anchoTotal = imagenesCartas.Sum(imagen => imagen.Width) + MargenEntreCartas * Math.Max(0, imagenesCartas.Count - 1);
@@ -74,19 +71,12 @@ public class GeneradorImagenes
         }
     }
 
-    public async Task<MemoryStream> GenerarMesaActualAsync(
-        Carta muestra,
-        Carta? jugada1,
-        Carta? jugada2,
-        string mazoJugada1 = MazoBasico,
-        string mazoJugada2 = MazoBasico)
+    public async Task<MemoryStream> GenerarMesaActualAsync(Carta muestra, Carta? jugada1, Carta? jugada2, string nombreFondo = FondoMadera)
     {
-        // La muestra es de la mesa, no de ningun jugador en particular: siempre se dibuja
-        // con el mazo basico para no generar una mezcla rara con lo que cada uno eligio.
-        using var imagenMuestra = await CargarCartaAsync(muestra, MazoBasico, AnchoMuestraEnMesa);
+        using var imagenMuestra = await CargarCartaAsync(muestra, AnchoMuestraEnMesa);
         using var imagenDorso = await CargarDorsoAsync(AnchoMuestraEnMesa);
-        using var imagenJugada1 = jugada1 is not null ? await CargarCartaAsync(jugada1, mazoJugada1, AnchoJugadaEnMesa) : null;
-        using var imagenJugada2 = jugada2 is not null ? await CargarCartaAsync(jugada2, mazoJugada2, AnchoJugadaEnMesa) : null;
+        using var imagenJugada1 = jugada1 is not null ? await CargarCartaAsync(jugada1, AnchoJugadaEnMesa) : null;
+        using var imagenJugada2 = jugada2 is not null ? await CargarCartaAsync(jugada2, AnchoJugadaEnMesa) : null;
 
         var jugadas = new List<Image<Rgba32>>();
         if (imagenJugada1 is not null)
@@ -106,7 +96,7 @@ public class GeneradorImagenes
         var altoMuestraConPila = imagenMuestra.Height + extraPila;
         var altoDisponible = AltoLienzoMesa - 2 * MargenBorde;
 
-        using var imagenFondo = await CargarFondoMaderaAsync(AnchoLienzoMesa, AltoLienzoMesa);
+        using var imagenFondo = await CargarFondoAsync(nombreFondo, AnchoLienzoMesa, AltoLienzoMesa);
         using var lienzo = new Image<Rgba32>(AnchoLienzoMesa, AltoLienzoMesa);
 
         lienzo.Mutate(contexto =>
@@ -138,11 +128,9 @@ public class GeneradorImagenes
         return streamResultado;
     }
 
-    private static async Task<Image<Rgba32>> CargarCartaAsync(Carta carta, string nombreMazo, int ancho = AnchoCarta)
+    private static async Task<Image<Rgba32>> CargarCartaAsync(Carta carta, int ancho = AnchoCarta)
     {
-        var carpetaCartas = Path.Combine(AppContext.BaseDirectory, "assets", "cartas", nombreMazo);
-        var extension = ExtensionPorMazo[nombreMazo];
-        var ruta = Path.Combine(carpetaCartas, $"{carta.Numero}_{carta.Palo.ToString().ToLowerInvariant()}.{extension}");
+        var ruta = Path.Combine(CarpetaCartas, $"{carta.Numero}_{carta.Palo.ToString().ToLowerInvariant()}.png");
         var imagen = await Image.LoadAsync<Rgba32>(ruta);
         imagen.Mutate(x => x.Resize(ancho, 0));
         return imagen;
@@ -155,9 +143,10 @@ public class GeneradorImagenes
         return imagen;
     }
 
-    private static async Task<Image<Rgba32>> CargarFondoMaderaAsync(int ancho, int alto)
+    private static async Task<Image<Rgba32>> CargarFondoAsync(string nombreFondo, int ancho, int alto)
     {
-        var imagen = await Image.LoadAsync<Rgba32>(RutaFondoMadera);
+        var ruta = Path.Combine(CarpetaFondos, $"{nombreFondo}.jpg");
+        var imagen = await Image.LoadAsync<Rgba32>(ruta);
         imagen.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new Size(ancho, alto),

@@ -7,14 +7,18 @@ CREATE TABLE IF NOT EXISTS usuarios (
     xp INTEGER NOT NULL DEFAULT 0,
     nivel INTEGER NOT NULL DEFAULT 1,
     titulo_equipado VARCHAR(100) DEFAULT NULL,
-    mazo_equipado VARCHAR(20) NOT NULL DEFAULT 'mazo_basico'
+    fondo_equipado VARCHAR(30) NOT NULL DEFAULT 'fondo_madera'
 );
 
--- No hay runner de migraciones: estos ALTER idempotentes hacen que volver a correr
--- schema.sql contra una base ya existente agregue las columnas sin romper nada.
+-- No hay runner de migraciones: estos ALTER/DROP idempotentes hacen que volver a correr
+-- schema.sql contra una base ya existente agregue o saque columnas sin romper nada.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nivel INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS titulo_equipado VARCHAR(100) DEFAULT NULL;
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS mazo_equipado VARCHAR(20) NOT NULL DEFAULT 'mazo_basico';
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS fondo_equipado VARCHAR(30) NOT NULL DEFAULT 'fondo_madera';
+
+-- El mazo clasico se dio de baja (se borraron sus assets): saca la columna de quien lo
+-- tuviera equipado, para no dejar una referencia a un mazo que ya no existe en disco.
+ALTER TABLE usuarios DROP COLUMN IF EXISTS mazo_equipado;
 
 CREATE TABLE IF NOT EXISTS recompensas_diarias (
     usuario_id BIGINT PRIMARY KEY,
@@ -45,9 +49,25 @@ CREATE TABLE IF NOT EXISTS inventario_usuarios (
     PRIMARY KEY (usuario_id, item_id)
 );
 
--- Item comprable de la tienda para desbloquear el mazo clasico (ver GeneradorImagenes /
--- UsuarioRepository.EquiparMazoAsync). No hay UNIQUE en nombre, asi que se usa WHERE NOT
--- EXISTS para que insertarlo sea idempotente igual que los ALTER de arriba.
+-- El mazo clasico se dio de baja: si quedo como item de tienda de una corrida anterior de
+-- este schema, se lo saca (y el inventario/equipamiento que lo referenciaba) para que no
+-- se pueda seguir comprando ni aparezca en /tienda.
+DELETE FROM inventario_usuarios
+WHERE item_id IN (SELECT id FROM tienda_items WHERE nombre = 'Mazo Clásico');
+DELETE FROM tienda_items WHERE nombre = 'Mazo Clásico';
+
+-- Fondos de mesa comprables (ver GeneradorImagenes / UsuarioRepository.EquiparFondoAsync).
+-- El fondo de madera original es gratis (default de todos), estos son los nuevos. No hay
+-- UNIQUE en nombre, asi que se usa WHERE NOT EXISTS para que insertarlos sea idempotente
+-- igual que los ALTER de arriba.
 INSERT INTO tienda_items (nombre, descripcion, precio)
-SELECT 'Mazo Clásico', 'Cambia el arte de tus cartas al mazo clasico espanol, con dorso propio.', 8000
-WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Mazo Clásico');
+SELECT 'Fondo Verde Liso', 'Cambia el fondo de la mesa a un pano verde liso.', 4000
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Verde Liso');
+
+INSERT INTO tienda_items (nombre, descripcion, precio)
+SELECT 'Fondo Póker', 'Cambia el fondo de la mesa a un tapete de póker.', 8000
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Póker');
+
+INSERT INTO tienda_items (nombre, descripcion, precio)
+SELECT 'Fondo Madera Oscura', 'Cambia el fondo de la mesa a una madera oscura.', 15000
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Madera Oscura');

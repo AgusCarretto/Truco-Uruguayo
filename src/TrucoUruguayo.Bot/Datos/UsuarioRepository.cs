@@ -1,6 +1,7 @@
 using Dapper;
 using Npgsql;
 using TrucoUruguayo.Bot.Modelo;
+using TrucoUruguayo.Bot.Servicios;
 
 namespace TrucoUruguayo.Bot.Datos;
 
@@ -20,7 +21,7 @@ public class UsuarioRepository
         await using var conexion = new NpgsqlConnection(_connectionString);
 
         const string sql = """
-            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, mazo_equipado AS MazoEquipado
+            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, fondo_equipado AS FondoEquipado
             FROM usuarios
             WHERE id = @Id
             """;
@@ -35,7 +36,7 @@ public class UsuarioRepository
         const string sql = """
             INSERT INTO usuarios (id, nombre, monedas, victorias, derrotas, xp)
             VALUES (@Id, @Nombre, @Monedas, 0, 0, 0)
-            RETURNING id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, mazo_equipado AS MazoEquipado
+            RETURNING id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, fondo_equipado AS FondoEquipado
             """;
 
         return await conexion.QuerySingleAsync<Usuario>(
@@ -77,7 +78,7 @@ public class UsuarioRepository
         var columna = orden == "xp" ? "xp" : "monedas";
 
         var sql = $"""
-            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, mazo_equipado AS MazoEquipado
+            SELECT id AS Id, nombre AS Nombre, monedas AS Monedas, victorias AS Victorias, derrotas AS Derrotas, xp AS Xp, nivel AS Nivel, titulo_equipado AS TituloEquipado, fondo_equipado AS FondoEquipado
             FROM usuarios
             ORDER BY {columna} DESC
             LIMIT @Limite
@@ -237,31 +238,39 @@ public class UsuarioRepository
         return true;
     }
 
-    private static readonly HashSet<string> MazosValidos = ["mazo_basico", "mazo_clasico"];
-    private const string NombreItemMazoClasico = "Mazo Clásico";
-
-    public async Task<bool> EquiparMazoAsync(ulong discordId, string mazo)
+    // El fondo de madera original es gratis (default de todos); los demas requieren haber
+    // comprado el item de tienda correspondiente. La clave es el nombre interno que usa
+    // GeneradorImagenes para el archivo, el valor el nombre del item en tienda_items.
+    private static readonly Dictionary<string, string?> ItemTiendaPorFondo = new()
     {
-        if (!MazosValidos.Contains(mazo))
+        [GeneradorImagenes.FondoMadera] = null,
+        [GeneradorImagenes.FondoVerdeliso] = "Fondo Verde Liso",
+        [GeneradorImagenes.FondoPoker] = "Fondo Póker",
+        [GeneradorImagenes.FondoMaderaOscura] = "Fondo Madera Oscura",
+    };
+
+    public async Task<bool> EquiparFondoAsync(ulong discordId, string fondo)
+    {
+        if (!ItemTiendaPorFondo.TryGetValue(fondo, out var nombreItem))
         {
             return false;
         }
 
-        if (mazo == "mazo_clasico")
+        if (nombreItem is not null)
         {
             await using var conexionCheck = new NpgsqlConnection(_connectionString);
 
-            const string sqlPoseeMazo = """
+            const string sqlPoseeFondo = """
                 SELECT 1
                 FROM inventario_usuarios
                 JOIN tienda_items ON tienda_items.id = inventario_usuarios.item_id
                 WHERE inventario_usuarios.usuario_id = @Id AND tienda_items.nombre = @Nombre
                 """;
 
-            var poseeMazo = await conexionCheck.QuerySingleOrDefaultAsync<int?>(
-                sqlPoseeMazo, new { Id = (long)discordId, Nombre = NombreItemMazoClasico });
+            var poseeFondo = await conexionCheck.QuerySingleOrDefaultAsync<int?>(
+                sqlPoseeFondo, new { Id = (long)discordId, Nombre = nombreItem });
 
-            if (poseeMazo is null)
+            if (poseeFondo is null)
             {
                 return false;
             }
@@ -269,9 +278,9 @@ public class UsuarioRepository
 
         await using var conexion = new NpgsqlConnection(_connectionString);
 
-        const string sqlActualizar = "UPDATE usuarios SET mazo_equipado = @Mazo WHERE id = @Id";
+        const string sqlActualizar = "UPDATE usuarios SET fondo_equipado = @Fondo WHERE id = @Id";
 
-        await conexion.ExecuteAsync(sqlActualizar, new { Mazo = mazo, Id = (long)discordId });
+        await conexion.ExecuteAsync(sqlActualizar, new { Fondo = fondo, Id = (long)discordId });
 
         return true;
     }
