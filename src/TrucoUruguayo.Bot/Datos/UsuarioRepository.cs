@@ -284,4 +284,70 @@ public class UsuarioRepository
 
         return true;
     }
+
+    private static readonly HashSet<string> EstadisticasValidas = ["partidas_ganadas", "flores_cantadas"];
+
+    public async Task<List<string>> ObtenerInsigniasAsync(ulong discordId)
+    {
+        await using var conexion = new NpgsqlConnection(_connectionString);
+
+        const string sql = """
+            SELECT logros_catalogo.emoji
+            FROM usuario_logros
+            JOIN logros_catalogo ON logros_catalogo.id = usuario_logros.logro_id
+            WHERE usuario_logros.discord_id = @Id
+            ORDER BY usuario_logros.fecha
+            """;
+
+        var emojis = await conexion.QueryAsync<string>(sql, new { Id = (long)discordId });
+        return emojis.ToList();
+    }
+
+    public async Task<List<Logro>> RegistrarProgresoAsync(ulong discordId, string estadistica, int cantidad = 1)
+    {
+        if (!EstadisticasValidas.Contains(estadistica))
+        {
+            throw new ArgumentOutOfRangeException(nameof(estadistica), "Estadistica desconocida.");
+        }
+
+        await using var conexion = new NpgsqlConnection(_connectionString);
+        await conexion.OpenAsync();
+        await using var transaccion = await conexion.BeginTransactionAsync();
+
+        var id = (long)discordId;
+
+        var sqlUpsert = $"""
+            INSERT INTO estadisticas_usuario (discord_id, {estadistica})
+            VALUES (@Id, @Cantidad)
+            ON CONFLICT (discord_id) DO UPDATE SET {estadistica} = estadisticas_usuario.{estadistica} + @Cantidad
+            RETURNING {estadistica}
+            """;
+
+        var nuevoValor = await conexion.QuerySingleAsync<int>(
+            new CommandDefinition(sqlUpsert, new { Id = id, Cantidad = cantidad }, transaccion));
+
+        const string sqlLogrosAlcanzados = """
+            SELECT id AS Id, nombre AS Nombre, estadistica_clave AS EstadisticaClave, meta AS Meta, recompensa_monedas AS RecompensaMonedas, emoji AS Emoji
+            FROM logros_catalogo
+            WHERE estadistica_clave = @Estadistica
+              AND meta <= @NuevoValor
+              AND id NOT IN (SELECT logro_id FROM usuario_logros WHERE discord_id = @Id)
+            """;
+
+        var logrosDesbloqueados = (await conexion.QueryAsync<Logro>(new CommandDefinition(
+            sqlLogrosAlcanzados, new { Estadistica = estadistica, NuevoValor = nuevoValor, Id = id }, transaccion))).ToList();
+
+        foreach (var logro in logrosDesbloqueados)
+        {
+            const string sqlInsertarLogro = "INSERT INTO usuario_logros (discord_id, logro_id) VALUES (@Id, @LogroId)";
+            await conexion.ExecuteAsync(new CommandDefinition(sqlInsertarLogro, new { Id = id, LogroId = logro.Id }, transaccion));
+
+            const string sqlSumarMonedas = "UPDATE usuarios SET monedas = monedas + @Monedas WHERE id = @Id";
+            await conexion.ExecuteAsync(new CommandDefinition(sqlSumarMonedas, new { Monedas = logro.RecompensaMonedas, Id = id }, transaccion));
+        }
+
+        await transaccion.CommitAsync();
+
+        return logrosDesbloqueados;
+    }
 }

@@ -1,6 +1,7 @@
 using Discord.WebSocket;
 using TrucoUruguayo.Bot.Datos;
 using TrucoUruguayo.Bot.Servicios;
+using TrucoUruguayo.Bot.Tests.Helpers;
 using Xunit;
 
 namespace TrucoUruguayo.Bot.Tests.Servicios;
@@ -10,8 +11,10 @@ public class GestorPartidasTests
     // GestorPartidas necesita un DiscordSocketClient y un UsuarioRepository para el timer de AFK
     // (ver GestorPartidas.cs), pero ninguno de los dos hace falta conectado para estos tests:
     // no esperamos a que el timer dispare (corre cada 10s, estos tests terminan en milisegundos).
-    private static GestorPartidas CrearGestor(TimeSpan? limiteReto = null) =>
-        new(new DiscordSocketClient(), new UsuarioRepository("Host=localhost"), limiteReto);
+    // FinalizarPartidaAsync si necesita un UsuarioRepository real (registra el logro del
+    // ganador), asi que los tests que lo usan pasan la connection string de verdad.
+    private static GestorPartidas CrearGestor(TimeSpan? limiteReto = null, string connectionString = "Host=localhost") =>
+        new(new DiscordSocketClient(), new UsuarioRepository(connectionString), limiteReto);
 
 
     [Fact]
@@ -78,13 +81,15 @@ public class GestorPartidasTests
     }
 
     [Fact]
-    public void FinalizarPartida_PartidaExistente_LimpiaTodosLosDiccionarios()
+    public async Task FinalizarPartidaAsync_PartidaExistente_LimpiaTodosLosDiccionarios()
     {
-        var gestor = CrearGestor();
+        var connectionString = ConexionDePrueba.ObtenerConnectionString();
+        var gestor = CrearGestor(connectionString: connectionString);
+        await using var ganador = await UsuarioDePrueba.CrearAsync(connectionString);
         gestor.IniciarPartida(canalId: 1, jugador1Id: 10, jugador2Id: 20, puntosObjetivo: 15);
         gestor.ApuestasActivas[1] = 500;
 
-        gestor.FinalizarPartida(1);
+        await gestor.FinalizarPartidaAsync(1, ganador.Id);
 
         Assert.False(gestor.PartidasActivas.ContainsKey(1));
         Assert.False(gestor.JugadoresActivos.ContainsKey(10));
@@ -93,11 +98,11 @@ public class GestorPartidasTests
     }
 
     [Fact]
-    public void FinalizarPartida_CanalSinPartida_NoTiraExcepcion()
+    public async Task FinalizarPartidaAsync_CanalSinPartida_NoTiraExcepcion()
     {
         var gestor = CrearGestor();
 
-        var excepcion = Record.Exception(() => gestor.FinalizarPartida(999));
+        var excepcion = await Record.ExceptionAsync(() => gestor.FinalizarPartidaAsync(999, 1));
 
         Assert.Null(excepcion);
     }

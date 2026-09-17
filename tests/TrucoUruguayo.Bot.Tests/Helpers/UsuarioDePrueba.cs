@@ -46,6 +46,8 @@ public sealed class UsuarioDePrueba : IAsyncDisposable
             DELETE FROM inventario_usuarios WHERE usuario_id = @Id;
             DELETE FROM recompensas_diarias WHERE usuario_id = @Id;
             DELETE FROM partidas_historico WHERE ganador_id = @Id OR perdedor_id = @Id;
+            DELETE FROM usuario_logros WHERE discord_id = @Id;
+            DELETE FROM estadisticas_usuario WHERE discord_id = @Id;
             DELETE FROM usuarios WHERE id = @Id;
             """,
             conexion);

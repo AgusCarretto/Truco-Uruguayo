@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using TrucoUruguayo.Bot.Datos;
+using TrucoUruguayo.Bot.Modelo;
 using TrucoUruguayo.Bot.Servicios;
 using TrucoUruguayo.Core.Juego;
 using TrucoUruguayo.Core.Modelo;
@@ -306,6 +307,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
                 await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
                 return;
             }
+
+            await AnunciarLogrosDesbloqueadosAsync(
+                Context.User.Id, await _usuarioRepository.RegistrarProgresoAsync(Context.User.Id, "flores_cantadas"));
 
             if (ronda.Estado == EstadoRonda.RespondiendoFlor)
             {
@@ -717,7 +721,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         var (subioGanador, nivelGanador) = await _usuarioRepository.SumarExpAsync(ganadorId, 50);
         var (subioPerdedor, nivelPerdedor) = await _usuarioRepository.SumarExpAsync(perdedorId, 15);
 
-        _gestorPartidas.FinalizarPartida(Context.Channel.Id);
+        await _gestorPartidas.FinalizarPartidaAsync(Context.Channel.Id, ganadorId);
 
         await Context.Channel.SendMessageAsync(
             $"🏆 ¡Ronda finalizada! <@{ganadorId}> gana la partida y se lleva 🪙 {pozo} monedas!");
@@ -730,6 +734,15 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         if (subioPerdedor)
         {
             await Context.Channel.SendMessageAsync($"🎉 ¡Felicidades <@{perdedorId}>! Has alcanzado el **Nivel {nivelPerdedor}**.");
+        }
+    }
+
+    private async Task AnunciarLogrosDesbloqueadosAsync(ulong jugadorId, IEnumerable<Logro> logros)
+    {
+        foreach (var logro in logros)
+        {
+            await Context.Channel.SendMessageAsync(
+                $"🎉 ¡<@{jugadorId}> desbloqueó el logro **{logro.Nombre}** {logro.Emoji} y ganó {logro.RecompensaMonedas} monedas!");
         }
     }
 

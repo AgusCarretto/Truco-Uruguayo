@@ -31,6 +31,7 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
 
         var inventario = await _tiendaRepository.ObtenerInventarioAsync(objetivo.Id);
         var equipados = inventario.Where(item => item.Equipado).ToList();
+        var insignias = await _usuarioRepository.ObtenerInsigniasAsync(objetivo.Id);
 
         var xpNivelActual = usuarioDb.Xp - NivelCalculadora.XpParaAlcanzarNivel(usuarioDb.Nivel);
         var xpNecesaria = usuarioDb.Nivel * 100;
@@ -39,8 +40,14 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
             ? $"👤 {usuarioDb.Nombre} | 🏆 {usuarioDb.TituloEquipado}"
             : $"👤 {usuarioDb.Nombre}";
 
-        var embed = new EmbedBuilder()
-            .WithTitle(tituloEmbed)
+        var embed = new EmbedBuilder().WithTitle(tituloEmbed);
+
+        if (insignias.Count > 0)
+        {
+            embed.AddField("Insignias", string.Join(' ', insignias), false);
+        }
+
+        embed
             .AddField("🪙 Monedas", usuarioDb.Monedas, true)
             .AddField("✅ Victorias", usuarioDb.Victorias, true)
             .AddField("❌ Derrotas", usuarioDb.Derrotas, true)

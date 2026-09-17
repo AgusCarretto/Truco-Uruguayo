@@ -71,3 +71,37 @@ WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Póker');
 INSERT INTO tienda_items (nombre, descripcion, precio)
 SELECT 'Fondo Madera Oscura', 'Cambia el fondo de la mesa a una madera oscura.', 15000
 WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Madera Oscura');
+
+CREATE TABLE IF NOT EXISTS estadisticas_usuario (
+    discord_id BIGINT PRIMARY KEY,
+    partidas_ganadas INT NOT NULL DEFAULT 0,
+    flores_cantadas INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logros_catalogo (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    estadistica_clave VARCHAR(50) NOT NULL,
+    meta INT NOT NULL,
+    recompensa_monedas INT NOT NULL,
+    emoji VARCHAR(10) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS usuario_logros (
+    discord_id BIGINT NOT NULL,
+    logro_id INT NOT NULL,
+    fecha TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (discord_id, logro_id)
+);
+
+INSERT INTO logros_catalogo (nombre, estadistica_clave, meta, recompensa_monedas, emoji)
+SELECT 'Primer Triunfo', 'partidas_ganadas', 1, 500, '🏆'
+WHERE NOT EXISTS (SELECT 1 FROM logros_catalogo WHERE nombre = 'Primer Triunfo');
+
+INSERT INTO logros_catalogo (nombre, estadistica_clave, meta, recompensa_monedas, emoji)
+SELECT 'Veterano', 'partidas_ganadas', 10, 2000, '👑'
+WHERE NOT EXISTS (SELECT 1 FROM logros_catalogo WHERE nombre = 'Veterano');
+
+INSERT INTO logros_catalogo (nombre, estadistica_clave, meta, recompensa_monedas, emoji)
+SELECT 'Jardinero', 'flores_cantadas', 25, 1500, '🌸'
+WHERE NOT EXISTS (SELECT 1 FROM logros_catalogo WHERE nombre = 'Jardinero');

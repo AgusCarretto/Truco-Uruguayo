@@ -56,7 +56,7 @@ public class GestorPartidas
         return PartidasActivas.TryGetValue(canalId, out var ronda) ? ronda : null;
     }
 
-    public void FinalizarPartida(ulong canalId)
+    public async Task FinalizarPartidaAsync(ulong canalId, ulong ganadorId)
     {
         if (!PartidasActivas.TryRemove(canalId, out var ronda))
         {
@@ -66,6 +66,16 @@ public class GestorPartidas
         JugadoresActivos.TryRemove(ronda.Jugador1Id, out _);
         JugadoresActivos.TryRemove(ronda.Jugador2Id, out _);
         ApuestasActivas.TryRemove(canalId, out _);
+
+        var logros = await _usuarioRepository.RegistrarProgresoAsync(ganadorId, "partidas_ganadas");
+        if (logros.Count > 0 && _client.GetChannel(canalId) is IMessageChannel canal)
+        {
+            foreach (var logro in logros)
+            {
+                await canal.SendMessageAsync(
+                    $"🎉 ¡<@{ganadorId}> desbloqueó el logro **{logro.Nombre}** {logro.Emoji} y ganó {logro.RecompensaMonedas} monedas!");
+            }
+        }
     }
 
     public bool TieneRetoPendiente(ulong retadorId) => RetosPendientes.ContainsKey(retadorId);
@@ -142,7 +152,7 @@ public class GestorPartidas
                 var (subioGanador, nivelGanador) = await _usuarioRepository.SumarExpAsync(ganadorId, 50);
                 var (subioPerdedor, nivelPerdedor) = await _usuarioRepository.SumarExpAsync(afkId, 15);
 
-                FinalizarPartida(canalId);
+                await FinalizarPartidaAsync(canalId, ganadorId);
 
                 if (_client.GetChannel(canalId) is IMessageChannel canal)
                 {

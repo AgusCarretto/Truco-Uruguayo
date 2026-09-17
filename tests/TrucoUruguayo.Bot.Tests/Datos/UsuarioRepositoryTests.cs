@@ -134,6 +134,78 @@ public class UsuarioRepositoryTests
     }
 
     [Fact]
+    public async Task RegistrarProgresoAsync_AlcanzaLaMeta_DesbloqueaElLogroYSumaLasMonedas()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 0);
+
+        var logros = await repositorio.RegistrarProgresoAsync(usuario.Id, "partidas_ganadas");
+
+        Assert.Contains(logros, l => l.Nombre == "Primer Triunfo");
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal(500, actualizado!.Monedas);
+    }
+
+    [Fact]
+    public async Task RegistrarProgresoAsync_NoAlcanzaLaMeta_NoDesbloqueaNada()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var logros = await repositorio.RegistrarProgresoAsync(usuario.Id, "flores_cantadas");
+
+        Assert.Empty(logros);
+    }
+
+    [Fact]
+    public async Task RegistrarProgresoAsync_LogroYaDesbloqueado_NoLoRepiteNiSumaMonedasDeNuevo()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 0);
+        await repositorio.RegistrarProgresoAsync(usuario.Id, "partidas_ganadas");
+
+        var logros = await repositorio.RegistrarProgresoAsync(usuario.Id, "partidas_ganadas");
+
+        Assert.Empty(logros);
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal(500, actualizado!.Monedas);
+    }
+
+    [Fact]
+    public async Task RegistrarProgresoAsync_EstadisticaInvalida_TiraExcepcion()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var excepcion = await Record.ExceptionAsync(() => repositorio.RegistrarProgresoAsync(usuario.Id, "estadistica_inventada"));
+
+        Assert.IsType<ArgumentOutOfRangeException>(excepcion);
+    }
+
+    [Fact]
+    public async Task ObtenerInsigniasAsync_ConLogroDesbloqueado_DevuelveElEmoji()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+        await repositorio.RegistrarProgresoAsync(usuario.Id, "partidas_ganadas");
+
+        var insignias = await repositorio.ObtenerInsigniasAsync(usuario.Id);
+
+        Assert.Contains("🏆", insignias);
+    }
+
+    [Fact]
+    public async Task ObtenerInsigniasAsync_SinLogros_DevuelveListaVacia()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+
+        var insignias = await repositorio.ObtenerInsigniasAsync(usuario.Id);
+
+        Assert.Empty(insignias);
+    }
+
+    [Fact]
     public async Task SumarExpAsync_SinCruzarUmbral_NoSubeDeNivel()
     {
         var repositorio = new UsuarioRepository(_connectionString);
