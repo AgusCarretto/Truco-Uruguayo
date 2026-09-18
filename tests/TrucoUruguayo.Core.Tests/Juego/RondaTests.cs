@@ -890,6 +890,50 @@ public class RondaTests
         Assert.Equal("¡Tenés Flor! Estás obligado a cantarla antes de hacer cualquier otra cosa.", excepcion.Message);
     }
 
+    [Fact]
+    public void ResponderTruco_ConFlorSinCantar_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) });
+        ronda.GritarTruco(Jugador1, CantoTruco.Truco);
+
+        var excepcion = Record.Exception(() => ronda.ResponderTruco(Jugador2, RespuestaCanto.Quiero));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal("¡Tenés Flor! Estás obligado a cantarla antes de hacer cualquier otra cosa.", excepcion.Message);
+    }
+
+    [Fact]
+    public void GritarTruco_RivalConFlorSinCantar_ElTrucoQuedaEnPausaYSeRespondeDespuesDeLaFlor()
+    {
+        // Jugador1 no tiene Flor y canta Truco primero. Jugador2 tiene Flor sin cantar: no
+        // puede decir Quiero/No Quiero todavia -- primero tiene que cantar su Flor (que no
+        // anula el Truco, a diferencia del Envido: queda en pausa) y recien ahi responder.
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) });
+
+        ronda.GritarTruco(Jugador1, CantoTruco.Truco);
+
+        Assert.Equal(EstadoRonda.RespondiendoTruco, ronda.Estado);
+        Assert.Equal(Jugador2, ronda.TurnoActual);
+
+        Assert.Throws<InvalidOperationException>(() => ronda.ResponderTruco(Jugador2, RespuestaCanto.Quiero));
+
+        ronda.CantarFlor(Jugador2);
+
+        Assert.Equal(3, ronda.PuntosJugador2);
+        Assert.Equal(EstadoRonda.RespondiendoTruco, ronda.Estado);
+        Assert.Equal(Jugador2, ronda.TurnoActual);
+
+        ronda.ResponderTruco(Jugador2, RespuestaCanto.Quiero);
+
+        Assert.Equal(2, ronda.ValorTrucoActual);
+        Assert.Equal(Jugador2, ronda.TurnoCantoTruco);
+        Assert.Equal(Jugador1, ronda.TurnoActual);
+    }
+
     // --- Escalada de Truco "tipo tenis" ---
 
     [Fact]

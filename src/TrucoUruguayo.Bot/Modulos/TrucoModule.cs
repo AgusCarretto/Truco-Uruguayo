@@ -326,7 +326,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         if (ronda.TieneFlor(ronda.TurnoActual) && !ronda.FlorCantada.GetValueOrDefault(ronda.TurnoActual))
         {
             var botonFlor = new ComponentBuilder()
-                .WithButton("🌸 Tenés Flor - Cantala", "cantar_flor_por_envido", ButtonStyle.Success)
+                .WithButton("🌸 Tenés Flor - Cantala", "cantar_flor_prioritaria", ButtonStyle.Success)
                 .Build();
 
             await Context.Channel.SendMessageAsync(
@@ -347,8 +347,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync();
     }
 
-    [ComponentInteraction("cantar_flor_por_envido")]
-    public async Task CantarFlorPorEnvidoAsync()
+    [ComponentInteraction("cantar_flor_prioritaria")]
+    public async Task CantarFlorPrioritariaAsync()
     {
         if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
         {
@@ -509,6 +509,23 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         catch (InvalidOperationException ex)
         {
             await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
+            return;
+        }
+
+        // Si a quien le toca responder le queda una Flor sin cantar, tiene que cantarla
+        // primero: no puede decir Quiero/No Quiero todavia. A diferencia del Envido, la
+        // Flor no anula este Truco -- queda en pausa y se retoma despues (ver Ronda.
+        // VolverAJugarOResponderTruco / CantarFlorYAnunciarAsync).
+        if (ronda.TieneFlor(ronda.TurnoActual) && !ronda.FlorCantada.GetValueOrDefault(ronda.TurnoActual))
+        {
+            var botonFlor = new ComponentBuilder()
+                .WithButton("🌸 Tenés Flor - Cantala", "cantar_flor_prioritaria", ButtonStyle.Success)
+                .Build();
+
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}🔥 <@{Context.User.Id}> gritó **{NombreCantoTruco(canto)}**! Pero <@{ronda.TurnoActual}> tiene Flor: tiene que cantarla antes de responder.",
+                components: botonFlor);
+            await DeferAsync();
             return;
         }
 
@@ -735,9 +752,10 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         }
     }
 
-    // Compartido entre "cantar Flor" normal (seleccionar_envido con flor) y "cantar Flor en
-    // vez de responder un envido pendiente" (cantar_flor_por_envido): Ronda.CantarFlor ya
-    // resuelve ambos casos, esto solo arma el mensaje segun como haya quedado la ronda.
+    // Compartido entre "cantar Flor" normal (seleccionar_envido con flor) y "cantar Flor con
+    // prioridad" sobre un Envido o un Truco pendientes (cantar_flor_prioritaria):
+    // Ronda.CantarFlor ya resuelve los tres casos, esto solo arma el mensaje segun como haya
+    // quedado la ronda (cruce de Flor, Truco que queda en pausa, o vuelta a jugar normal).
     private async Task CantarFlorYAnunciarAsync(Ronda ronda)
     {
         try
@@ -757,6 +775,17 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         {
             await Context.Channel.SendMessageAsync(
                 $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó Flor! Pero huele a jardín... <@{ronda.TurnoActual}>, ¿qué respondés?",
+                components: ConstruirBotonesDeAccion(ronda));
+            await DeferAsync();
+            return;
+        }
+
+        if (ronda.Estado == EstadoRonda.RespondiendoTruco)
+        {
+            // La Flor no anula un Truco que ya estaba pendiente de respuesta (a diferencia
+            // del Envido): queda en pausa y ahora hay que retomarlo.
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó Flor (3 pts)! El Truco sigue en pie, <@{ronda.TurnoActual}> tiene que responderlo.",
                 components: ConstruirBotonesDeAccion(ronda));
             await DeferAsync();
             return;
@@ -802,6 +831,19 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         {
             botones.WithButton("✅ Quiero", "contraflor_quiero", ButtonStyle.Success, row: 1);
             botones.WithButton("❌ No Quiero", "contraflor_noquiero", ButtonStyle.Danger, row: 1);
+        }
+        else if (ronda.Estado == EstadoRonda.RespondiendoTruco)
+        {
+            // Llega aca cuando una Flor pospuso un Truco pendiente (Ronda.VolverAJugarOResponderTruco)
+            // y hay que retomarlo: mismos botones que arma GritarTrucoAsync al cantarlo.
+            botones.WithButton("✅ Quiero", "resp_truco_quiero", ButtonStyle.Success, row: 1);
+            botones.WithButton("❌ No Quiero", "resp_truco_noquiero", ButtonStyle.Danger, row: 1);
+
+            var siguienteEscalada = SiguienteEscalada(ronda.CantoTrucoPendiente!.Value);
+            if (siguienteEscalada is not null)
+            {
+                botones.WithButton($"🔥 {NombreCantoTruco(siguienteEscalada.Value)}", "gritar_truco", ButtonStyle.Primary, row: 1);
+            }
         }
         else if (ronda.Estado == EstadoRonda.EsperandoEnvido || ronda.Estado == EstadoRonda.JugandoCartas)
         {

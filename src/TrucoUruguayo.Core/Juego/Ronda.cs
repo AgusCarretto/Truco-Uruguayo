@@ -261,6 +261,8 @@ public class Ronda
             throw new InvalidOperationException("No hay ningun truco pendiente para responder.");
         }
 
+        ValidarObligacionDeFlor(jugadorId);
+
         var cantador = JugadorQueGritoTruco!.Value;
 
         if (respuesta == RespuestaCanto.Quiero)
@@ -397,12 +399,7 @@ public class Ronda
         {
             AsignarPuntos(jugadorId, 3);
             EnvidoCantado = true;
-
-            if (Fase != FaseRonda.Finalizada)
-            {
-                Estado = EstadoRonda.JugandoCartas;
-                TurnoActual = JugadorManoId;
-            }
+            VolverAJugarOResponderTruco();
         }
         else
         {
@@ -436,12 +433,7 @@ public class Ronda
                 FlorCantada[Jugador1Id] = true;
                 FlorCantada[Jugador2Id] = true;
                 EnvidoCantado = true;
-
-                if (Fase != FaseRonda.Finalizada)
-                {
-                    Estado = EstadoRonda.JugandoCartas;
-                    TurnoActual = JugadorManoId;
-                }
+                VolverAJugarOResponderTruco();
                 break;
 
             case "con_flor_envido":
@@ -504,12 +496,7 @@ public class Ronda
         FlorCantada[Jugador1Id] = true;
         FlorCantada[Jugador2Id] = true;
         EnvidoCantado = true;
-
-        if (Fase != FaseRonda.Finalizada)
-        {
-            Estado = EstadoRonda.JugandoCartas;
-            TurnoActual = JugadorManoId;
-        }
+        VolverAJugarOResponderTruco();
 
         RegistrarActividad();
     }
@@ -729,6 +716,30 @@ public class Ronda
         Estado = EstadoRonda.EsperandoEnvido;
         TurnoActual = JugadorManoId;
         RegistrarActividad();
+    }
+
+    // Adonde vuelve el juego cuando termina de resolverse una Flor (cantada sola, o cruzada
+    // con Con Flor Envido / Contra Flor al Resto). Si habia un Truco que quedo en pausa
+    // porque la Flor lo interrumpio (Regla: la Flor no anula el Truco, solo lo pospone),
+    // se retoma ahi -- el que tenia que responderlo lo sigue teniendo que hacer -- en vez
+    // de mandar derecho a JugandoCartas.
+    private void VolverAJugarOResponderTruco()
+    {
+        if (Fase == FaseRonda.Finalizada)
+        {
+            return;
+        }
+
+        if (_cantoTrucoPendiente is not null)
+        {
+            Estado = EstadoRonda.RespondiendoTruco;
+            TurnoActual = JugadorQueGritoTruco == Jugador1Id ? Jugador2Id : Jugador1Id;
+        }
+        else
+        {
+            Estado = EstadoRonda.JugandoCartas;
+            TurnoActual = JugadorManoId;
+        }
     }
 
     // Regla de oro de jerarquia: Flor > Envido > Truco > Jugar Carta. Si un jugador tiene
