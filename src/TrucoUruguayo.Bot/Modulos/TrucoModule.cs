@@ -298,46 +298,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         if (opciones[0] == "flor")
         {
-            try
-            {
-                ronda.CantarFlor(Context.User.Id);
-            }
-            catch (InvalidOperationException ex)
-            {
-                await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
-                return;
-            }
-
-            await AnunciarLogrosDesbloqueadosAsync(
-                Context.User.Id, await _usuarioRepository.RegistrarProgresoAsync(Context.User.Id, "flores_cantadas"));
-
-            if (ronda.Estado == EstadoRonda.RespondiendoFlor)
-            {
-                await Context.Channel.SendMessageAsync(
-                    $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó Flor! Pero huele a jardín... <@{ronda.TurnoActual}>, ¿qué respondés?",
-                    components: ConstruirBotonesDeAccion(ronda));
-                await DeferAsync();
-                return;
-            }
-
-            var partidaTerminada = ronda.Fase == FaseRonda.Finalizada;
-            var textoFlor = partidaTerminada
-                ? $"🌸 ¡<@{Context.User.Id}> cantó FLOR ({ronda.CalcularPuntosFlor(Context.User.Id)} puntos)!"
-                : $"🌸 ¡<@{Context.User.Id}> cantó Flor (3 pts)! El Envido se anula. Turno de jugar carta para <@{ronda.TurnoActual}>.";
-
-            if (partidaTerminada)
-            {
-                await Context.Channel.SendMessageAsync($"{GenerarTextoMarcador(ronda)}{textoFlor}");
-                await FinalizarYAnunciarRonda(ronda);
-            }
-            else
-            {
-                await Context.Channel.SendMessageAsync(
-                    $"{GenerarTextoMarcador(ronda)}{textoFlor}",
-                    components: ConstruirBotonesDeAccion(ronda));
-            }
-
-            await DeferAsync();
+            await CantarFlorYAnunciarAsync(ronda);
             return;
         }
 
@@ -359,6 +320,22 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        // Si a quien le toca responder le queda una Flor sin cantar, tiene prioridad sobre
+        // el envido: no puede decir Quiero/No Quiero, tiene que cantarla (y esa Flor anula
+        // este envido). Ver Ronda.CantarFlor / Ronda.ResponderEnvido.
+        if (ronda.TieneFlor(ronda.TurnoActual) && !ronda.FlorCantada.GetValueOrDefault(ronda.TurnoActual))
+        {
+            var botonFlor = new ComponentBuilder()
+                .WithButton("🌸 Tenés Flor - Cantala", "cantar_flor_por_envido", ButtonStyle.Success)
+                .Build();
+
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}🎲 ¡<@{Context.User.Id}> cantó {nombreEnvido}! Pero <@{ronda.TurnoActual}> tiene Flor: tiene que cantarla antes de responder.",
+                components: botonFlor);
+            await DeferAsync();
+            return;
+        }
+
         var botones = new ComponentBuilder()
             .WithButton("✅ Quiero", "resp_envido_quiero", ButtonStyle.Success)
             .WithButton("❌ No Quiero", "resp_envido_noquiero", ButtonStyle.Danger)
@@ -368,6 +345,18 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             $"{GenerarTextoMarcador(ronda)}🎲 ¡<@{Context.User.Id}> cantó {nombreEnvido}!",
             components: botones);
         await DeferAsync();
+    }
+
+    [ComponentInteraction("cantar_flor_por_envido")]
+    public async Task CantarFlorPorEnvidoAsync()
+    {
+        if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
+        {
+            await RespondAsync("❌ No hay una partida activa en este canal.", ephemeral: true);
+            return;
+        }
+
+        await CantarFlorYAnunciarAsync(ronda);
     }
 
     [ComponentInteraction("respuesta_flor")]
@@ -744,6 +733,53 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             await Context.Channel.SendMessageAsync(
                 $"🎉 ¡<@{jugadorId}> desbloqueó el logro **{logro.Nombre}** {logro.Emoji} y ganó {logro.RecompensaMonedas} monedas!");
         }
+    }
+
+    // Compartido entre "cantar Flor" normal (seleccionar_envido con flor) y "cantar Flor en
+    // vez de responder un envido pendiente" (cantar_flor_por_envido): Ronda.CantarFlor ya
+    // resuelve ambos casos, esto solo arma el mensaje segun como haya quedado la ronda.
+    private async Task CantarFlorYAnunciarAsync(Ronda ronda)
+    {
+        try
+        {
+            ronda.CantarFlor(Context.User.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await RespondAsync($"⚠️ {ex.Message}", ephemeral: true);
+            return;
+        }
+
+        await AnunciarLogrosDesbloqueadosAsync(
+            Context.User.Id, await _usuarioRepository.RegistrarProgresoAsync(Context.User.Id, "flores_cantadas"));
+
+        if (ronda.Estado == EstadoRonda.RespondiendoFlor)
+        {
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}🌸 ¡<@{Context.User.Id}> cantó Flor! Pero huele a jardín... <@{ronda.TurnoActual}>, ¿qué respondés?",
+                components: ConstruirBotonesDeAccion(ronda));
+            await DeferAsync();
+            return;
+        }
+
+        var partidaTerminada = ronda.Fase == FaseRonda.Finalizada;
+        var textoFlor = partidaTerminada
+            ? $"🌸 ¡<@{Context.User.Id}> cantó FLOR ({ronda.CalcularPuntosFlor(Context.User.Id)} puntos)!"
+            : $"🌸 ¡<@{Context.User.Id}> cantó Flor (3 pts)! El Envido se anula. Turno de jugar carta para <@{ronda.TurnoActual}>.";
+
+        if (partidaTerminada)
+        {
+            await Context.Channel.SendMessageAsync($"{GenerarTextoMarcador(ronda)}{textoFlor}");
+            await FinalizarYAnunciarRonda(ronda);
+        }
+        else
+        {
+            await Context.Channel.SendMessageAsync(
+                $"{GenerarTextoMarcador(ronda)}{textoFlor}",
+                components: ConstruirBotonesDeAccion(ronda));
+        }
+
+        await DeferAsync();
     }
 
     private static MessageComponent ConstruirBotonesDeAccion(Ronda ronda)

@@ -519,6 +519,40 @@ public class RondaTests
     }
 
     [Fact]
+    public void ResponderEnvido_ConFlorSinCantar_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) });
+        ronda.CantarEnvido(Jugador1, Canto.Envido);
+
+        var excepcion = Record.Exception(() => ronda.ResponderEnvido(Jugador2, RespuestaCanto.Quiero));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal(0, ronda.PuntosJugador1);
+        Assert.Equal(0, ronda.PuntosJugador2);
+    }
+
+    [Fact]
+    public void CantarFlor_ConEnvidoPendienteDeResponder_AnulaElEnvidoYSumaLaFlor()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) });
+        ronda.CantarEnvido(Jugador1, Canto.Envido);
+
+        ronda.CantarFlor(Jugador2);
+
+        // El envido queda anulado (nadie cobra sus puntos), la Flor de Jugador2 se cobra
+        // sola (rival sin Flor) y se puede seguir jugando cartas con normalidad.
+        Assert.Equal(0, ronda.PuntosJugador1);
+        Assert.Equal(3, ronda.PuntosJugador2);
+        Assert.Null(ronda.JugadorQueCanto);
+        Assert.True(ronda.FlorCantada[Jugador2]);
+        Assert.Equal(EstadoRonda.JugandoCartas, ronda.Estado);
+    }
+
+    [Fact]
     public void JugarCarta_GanarLaManoSinAlcanzarElObjetivo_ReseteaEnvidoCantado()
     {
         var ronda = NuevaRondaConMazoFijo(

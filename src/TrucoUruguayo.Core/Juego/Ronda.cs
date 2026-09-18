@@ -157,6 +157,11 @@ public class Ronda
             throw new InvalidOperationException("No hay ningun canto pendiente para responder.");
         }
 
+        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
+        {
+            throw new InvalidOperationException("¡Tenés Flor! Cantala en vez de responder al envido.");
+        }
+
         var canto = _cantoPendiente!.Value;
         var cantador = JugadorQueCanto!.Value;
 
@@ -368,7 +373,12 @@ public class Ronda
             throw new InvalidOperationException("Solo podés cantar Flor en tu turno.");
         }
 
-        if (!PuedeCantarEnvido(jugadorId))
+        // Si hay un envido pendiente de que este jugador responda, cantar Flor tiene
+        // prioridad sobre esa respuesta: anula el envido (no se cobra) en vez de que este
+        // jugador tenga que decir Quiero/No Quiero.
+        var anulaEnvidoPendiente = Estado == EstadoRonda.RespondiendoCanto;
+
+        if (!anulaEnvidoPendiente && !PuedeCantarEnvido(jugadorId))
         {
             throw new InvalidOperationException("No se puede cantar Flor en este momento.");
         }
@@ -376,6 +386,12 @@ public class Ronda
         if (!TieneFlor(jugadorId))
         {
             throw new InvalidOperationException("No tenés Flor, no seas fantasma.");
+        }
+
+        if (anulaEnvidoPendiente)
+        {
+            _cantoPendiente = null;
+            JugadorQueCanto = null;
         }
 
         FlorCantada[jugadorId] = true;
