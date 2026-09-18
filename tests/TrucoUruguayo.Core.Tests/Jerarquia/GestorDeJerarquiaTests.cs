@@ -257,7 +257,7 @@ public class GestorDeJerarquiaTests
     }
 
     [Fact]
-    public void MejorEnvido_ConDosPiezas_UsaLaMasAltaComoBaseYLaOtraComoSuma()
+    public void MejorEnvido_ConDosPiezas_UsaLaMasAltaComoBaseYLaOtraSoloSumaSuUnidad()
     {
         var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
 
@@ -268,7 +268,9 @@ public class GestorDeJerarquiaTests
             new Carta(6, Palo.Espada), // envido 6
         };
 
-        Assert.Equal(59, gestor.MejorEnvido(mano)); // 30 + 29
+        // La segunda pieza no suma su ValorEnvido completo (eso duplicaria el +20 que ya
+        // trae la primera): solo aporta su cifra de unidades (29 % 10 = 9).
+        Assert.Equal(39, gestor.MejorEnvido(mano)); // 30 + 9
     }
 
     [Fact]
@@ -297,7 +299,7 @@ public class GestorDeJerarquiaTests
     }
 
     [Fact]
-    public void MejorEnvido_ConTresPiezas_UsaLaMasAltaComoBaseYLaSegundaComoSuma()
+    public void MejorEnvido_ConTresPiezas_UsaLaMasAltaComoBaseYLaSegundaSoloSumaSuUnidad()
     {
         var gestor = new GestorDeJerarquia(new Carta(3, Palo.Oro));
 
@@ -308,7 +310,7 @@ public class GestorDeJerarquiaTests
             new Carta(5, Palo.Oro),  // pieza Cinco, envido 28
         };
 
-        Assert.Equal(59, gestor.MejorEnvido(mano)); // 30 + 29
+        Assert.Equal(39, gestor.MejorEnvido(mano)); // 30 + (29 % 10 = 9)
     }
 
     [Fact]
@@ -330,7 +332,7 @@ public class GestorDeJerarquiaTests
             new Carta(6, Palo.Espada),
         };
 
-        Assert.Equal(54, gestor.MejorEnvido(manoCaballoPrimero)); // 27 + 27
-        Assert.Equal(54, gestor.MejorEnvido(manoSotaPrimero));
+        Assert.Equal(34, gestor.MejorEnvido(manoCaballoPrimero)); // 27 + (27 % 10 = 7)
+        Assert.Equal(34, gestor.MejorEnvido(manoSotaPrimero));
     }
 }

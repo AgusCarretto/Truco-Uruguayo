@@ -635,11 +635,13 @@ public class RondaTests
     {
         Ronda ronda;
         ulong quienCanta;
+        ulong quienResponde;
 
         // La mano nueva post-IrseAlMazo reparte cartas al azar (IniciarSiguienteMano no
-        // acepta mano fija). Si a quien tiene que cantar le toca Flor, cantarla (o resolver
-        // el cruce) anula el Envido para esta mano por diseno, asi que ese reparto no sirve
-        // para este test: se reintenta con una ronda nueva hasta que no sea el caso.
+        // acepta mano fija). Si a quien tiene que cantar (o a quien le toca responder) le
+        // queda Flor sin cantar, el Envido no se puede cantar o no se puede responder (se
+        // anula) para esta mano por diseno, asi que ese reparto no sirve para este test: se
+        // reintenta con una ronda nueva hasta que no sea el caso para ninguno de los dos.
         do
         {
             ronda = NuevaRondaConMazoFijo(
@@ -651,14 +653,14 @@ public class RondaTests
             // ValorTrucoActual base (1) y, como no alcanza el objetivo, arranca mano nueva.
             ronda.IrseAlMazo(Jugador1);
             quienCanta = ronda.TurnoActual;
+            quienResponde = quienCanta == Jugador1 ? Jugador2 : Jugador1;
         }
-        while (ronda.TieneFlor(quienCanta));
+        while (ronda.TieneFlor(quienCanta) || ronda.TieneFlor(quienResponde));
 
         Assert.Equal(1, ronda.PuntosJugador2);
         Assert.Equal(0, ronda.PuntosJugador1);
         Assert.Equal(FaseRonda.PrimeraMano, ronda.Fase);
 
-        var quienResponde = quienCanta == Jugador1 ? Jugador2 : Jugador1;
         var faltaEsperada = ronda.PuntosObjetivo - Math.Max(ronda.PuntosJugador1, ronda.PuntosJugador2);
         var puntos1Antes = ronda.PuntosJugador1;
         var puntos2Antes = ronda.PuntosJugador2;

@@ -119,7 +119,11 @@ public class GestorDeJerarquia
             var basePieza = piezasEnMano.OrderByDescending(ValorEnvido).First();
             var restantes = new List<Carta>(mano);
             restantes.Remove(basePieza);
-            var mejorRestante = restantes.Max(ValorEnvido);
+
+            // El valor de una pieza (27 a 30) ya trae incluido el bono de "mismo palo" (+20)
+            // una sola vez. Si la otra carta que queda tambien es pieza, sumar su ValorEnvido
+            // completo contaria ese +20 dos veces: solo se suma su cifra de unidades.
+            var mejorRestante = restantes.Max(c => EsPieza(c) ? ValorEnvido(c) % 10 : ValorEnvido(c));
             return ValorEnvido(basePieza) + mejorRestante;
         }
 
