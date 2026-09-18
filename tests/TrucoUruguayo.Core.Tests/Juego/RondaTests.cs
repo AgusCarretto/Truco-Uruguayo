@@ -697,10 +697,11 @@ public class RondaTests
         // Usa el constructor de mazo fijo (Jugador1 mano determinista) porque este test
         // verifica el TurnoActual restaurado tras un "Quiero" explicito, que depende de
         // quien era mano al arrancar — con el constructor publico (mano aleatoria) el
-        // resultado esperado cambiaria segun el sorteo.
+        // resultado esperado cambiaria segun el sorteo. Manos sin Flor (palos mezclados)
+        // para no chocar con la obligacion de cantar Flor antes que nada.
         var ronda = NuevaRondaConMazoFijo(
-            new[] { new Carta(1, Palo.Espada), new Carta(2, Palo.Espada), new Carta(3, Palo.Espada) },
-            new[] { new Carta(4, Palo.Espada), new Carta(5, Palo.Espada), new Carta(6, Palo.Espada) });
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
 
         ronda.GritarTruco(Jugador1, CantoTruco.Truco);
 
@@ -874,6 +875,19 @@ public class RondaTests
         var excepcion = Record.Exception(() => ronda.GritarTruco(Jugador1, CantoTruco.Truco));
 
         Assert.Null(excepcion);
+    }
+
+    [Fact]
+    public void GritarTruco_ConFlorSinCantar_TiraExcepcion()
+    {
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(2, Palo.Oro), new Carta(4, Palo.Oro), new Carta(5, Palo.Oro) },
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) });
+
+        var excepcion = Record.Exception(() => ronda.GritarTruco(Jugador1, CantoTruco.Truco));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal("¡Tenés Flor! Estás obligado a cantarla antes de hacer cualquier otra cosa.", excepcion.Message);
     }
 
     // --- Escalada de Truco "tipo tenis" ---
@@ -1316,7 +1330,7 @@ public class RondaTests
         var excepcion = Record.Exception(() => ronda.CantarEnvido(Jugador1, Canto.Envido));
 
         Assert.IsType<InvalidOperationException>(excepcion);
-        Assert.Equal("¡Tenés Flor! Debés cantarla antes del envido.", excepcion.Message);
+        Assert.Equal("¡Tenés Flor! Estás obligado a cantarla antes de hacer cualquier otra cosa.", excepcion.Message);
     }
 
     [Fact]
@@ -1344,7 +1358,7 @@ public class RondaTests
         var excepcion = Record.Exception(() => ronda.JugarCarta(Jugador1, new Carta(2, Palo.Oro)));
 
         Assert.IsType<InvalidOperationException>(excepcion);
-        Assert.Equal("¡Tenés Flor! Debés cantarla antes de jugar una carta.", excepcion.Message);
+        Assert.Equal("¡Tenés Flor! Estás obligado a cantarla antes de hacer cualquier otra cosa.", excepcion.Message);
     }
 
     [Fact]

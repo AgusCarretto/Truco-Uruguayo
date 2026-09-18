@@ -118,10 +118,7 @@ public class Ronda
             throw new InvalidOperationException("Solo podés cantar envido en tu turno.");
         }
 
-        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
-        {
-            throw new InvalidOperationException("¡Tenés Flor! Debés cantarla antes del envido.");
-        }
+        ValidarObligacionDeFlor(jugadorId);
 
         if (Estado == EstadoRonda.RespondiendoCanto || Estado == EstadoRonda.RespondiendoTruco)
         {
@@ -157,10 +154,7 @@ public class Ronda
             throw new InvalidOperationException("No hay ningun canto pendiente para responder.");
         }
 
-        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
-        {
-            throw new InvalidOperationException("¡Tenés Flor! Cantala en vez de responder al envido.");
-        }
+        ValidarObligacionDeFlor(jugadorId);
 
         var canto = _cantoPendiente!.Value;
         var cantador = JugadorQueCanto!.Value;
@@ -196,6 +190,8 @@ public class Ronda
         {
             throw new InvalidOperationException("La ronda ya finalizo.");
         }
+
+        ValidarObligacionDeFlor(jugadorId);
 
         // Escalada "tipo tenis": el rival que debe responder puede subir la apuesta
         // directo (ej. Retruco) sin decir "Quiero" antes. Eso implica aceptar el
@@ -535,10 +531,7 @@ public class Ronda
             throw new InvalidOperationException("No es el turno de este jugador.");
         }
 
-        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
-        {
-            throw new InvalidOperationException("¡Tenés Flor! Debés cantarla antes de jugar una carta.");
-        }
+        ValidarObligacionDeFlor(jugadorId);
 
         var mano = jugadorId == Jugador1Id ? _manoJugador1 : _manoJugador2;
         if (!mano.Remove(carta))
@@ -736,6 +729,17 @@ public class Ronda
         Estado = EstadoRonda.EsperandoEnvido;
         TurnoActual = JugadorManoId;
         RegistrarActividad();
+    }
+
+    // Regla de oro de jerarquia: Flor > Envido > Truco > Jugar Carta. Si un jugador tiene
+    // Flor en su mano original y todavia no la canto, no puede hacer ninguna otra cosa
+    // (cantar Envido, cantar Truco o jugar una carta) hasta que la cante.
+    private void ValidarObligacionDeFlor(ulong jugadorId)
+    {
+        if (TieneFlor(jugadorId) && !FlorCantada.GetValueOrDefault(jugadorId))
+        {
+            throw new InvalidOperationException("¡Tenés Flor! Estás obligado a cantarla antes de hacer cualquier otra cosa.");
+        }
     }
 
     private void AsignarPuntos(ulong jugadorId, int puntos)
