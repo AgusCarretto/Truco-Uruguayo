@@ -14,8 +14,13 @@ var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
     ?? throw new InvalidOperationException("Falta DISCORD_TOKEN en el .env");
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
     ?? throw new InvalidOperationException("Falta DB_CONNECTION_STRING en el .env");
-var guildId = ulong.Parse(Environment.GetEnvironmentVariable("DISCORD_GUILD_ID")
-    ?? throw new InvalidOperationException("Falta DISCORD_GUILD_ID en el .env"));
+
+// DISCORD_GUILD_ID es opcional: si esta seteado, los comandos se registran solo en ese
+// servidor (cambios visibles al instante, ideal para desarrollo). Si no esta, se registran
+// globalmente (tardan hasta ~1 hora en propagarse a todos los servidores, pero es lo que
+// hace falta para que el bot funcione en cualquier servidor donde lo agreguen).
+var guildIdTexto = Environment.GetEnvironmentVariable("DISCORD_GUILD_ID");
+var guildId = string.IsNullOrWhiteSpace(guildIdTexto) ? (ulong?)null : ulong.Parse(guildIdTexto);
 
 try
 {
@@ -102,7 +107,19 @@ client.Ready += async () =>
 
     modulosCargados = true;
     await interactions.AddModulesAsync(Assembly.GetExecutingAssembly(), services);
-    await interactions.RegisterCommandsToGuildAsync(guildId);
+
+    if (guildId is not null)
+    {
+        await interactions.RegisterCommandsToGuildAsync(guildId.Value);
+        Console.WriteLine($"Comandos registrados en el servidor {guildId.Value} (modo desarrollo).");
+    }
+    else
+    {
+        await interactions.RegisterCommandsGloballyAsync();
+        Console.WriteLine("Comandos registrados globalmente. Puede tardar hasta 1 hora en aparecer en todos los servidores.");
+    }
+
+    await client.SetGameAsync("/truco para jugar | /ayuda", type: ActivityType.Playing);
 };
 
 async Task EnviarBienvenidaAsync(SocketInteraction interaction)
