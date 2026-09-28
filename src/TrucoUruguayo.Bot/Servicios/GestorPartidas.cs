@@ -142,9 +142,9 @@ public class GestorPartidas
                 var afkId = ronda.TurnoActual;
                 var ganadorId = afkId == ronda.Jugador1Id ? ronda.Jugador2Id : ronda.Jugador1Id;
                 var apuesta = ApuestasActivas.GetValueOrDefault(canalId);
-                var pozo = apuesta * 2;
 
-                await _usuarioRepository.ActualizarMonedasAsync(ganadorId, pozo);
+                await _usuarioRepository.ActualizarMonedasAsync(ganadorId, apuesta);
+                await _usuarioRepository.ActualizarMonedasAsync(afkId, -apuesta);
                 await _usuarioRepository.RegistrarPartidaAsync(ganadorId, afkId, apuesta);
                 await _usuarioRepository.SumarVictoriaAsync(ganadorId);
                 await _usuarioRepository.SumarDerrotaAsync(afkId);
@@ -157,7 +157,7 @@ public class GestorPartidas
                 if (_client.GetChannel(canalId) is IMessageChannel canal)
                 {
                     await canal.SendMessageAsync(
-                        $"⏳ ¡<@{afkId}> se quedó dormido (AFK)! <@{ganadorId}> gana por abandono y se lleva el pozo.");
+                        $"⏳ ¡<@{afkId}> se quedó dormido (AFK)! <@{ganadorId}> gana por abandono y se lleva 🪙 {apuesta} monedas.");
 
                     if (subioGanador)
                     {

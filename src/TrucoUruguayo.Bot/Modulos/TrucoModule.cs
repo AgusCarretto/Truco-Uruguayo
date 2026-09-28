@@ -124,9 +124,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        await _usuarioRepository.ActualizarMonedasAsync(retadorId, -apuesta);
-        await _usuarioRepository.ActualizarMonedasAsync(retadoId, -apuesta);
-
+        // Las monedas de la apuesta NO se descuentan aca: si el bot se reinicia a mitad de
+        // partida (el estado de la partida es en memoria, no persiste) nadie pierde nada.
+        // Se mueven recien al liquidar la partida (FinalizarYAnunciarRonda / AFK).
         _gestorPartidas.IniciarPartida(Context.Channel.Id, retadorId, retadoId, puntos);
         _gestorPartidas.ApuestasActivas[Context.Channel.Id] = apuesta;
         var ronda = _gestorPartidas.ObtenerPartidaPorUsuario(retadoId)!;
@@ -717,9 +717,9 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         var ganadorId = ronda.GanadorRonda!.Value;
         var perdedorId = ganadorId == ronda.Jugador1Id ? ronda.Jugador2Id : ronda.Jugador1Id;
         var apuesta = _gestorPartidas.ApuestasActivas.GetValueOrDefault(Context.Channel.Id);
-        var pozo = apuesta * 2;
 
-        await _usuarioRepository.ActualizarMonedasAsync(ganadorId, pozo);
+        await _usuarioRepository.ActualizarMonedasAsync(ganadorId, apuesta);
+        await _usuarioRepository.ActualizarMonedasAsync(perdedorId, -apuesta);
         await _usuarioRepository.RegistrarPartidaAsync(ganadorId, perdedorId, apuesta);
         await _usuarioRepository.SumarVictoriaAsync(ganadorId);
         await _usuarioRepository.SumarDerrotaAsync(perdedorId);
@@ -730,7 +730,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await _gestorPartidas.FinalizarPartidaAsync(Context.Channel.Id, ganadorId);
 
         await Context.Channel.SendMessageAsync(
-            $"🏆 ¡Ronda finalizada! <@{ganadorId}> gana la partida y se lleva 🪙 {pozo} monedas!");
+            $"🏆 ¡Ronda finalizada! <@{ganadorId}> gana la partida y se lleva 🪙 {apuesta} monedas de <@{perdedorId}>!");
 
         if (subioGanador)
         {
