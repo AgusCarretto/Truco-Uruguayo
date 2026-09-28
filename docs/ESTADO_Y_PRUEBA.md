@@ -118,11 +118,15 @@ nunca de punta a punta jugando de verdad en Discord con dos cuentas):
 
 - **Bot solo soporta 1 vs 1.** No hay truco de a 4/6 ni equipos — no lo armé porque nadie
   lo pidió, sería una feature nueva grande, no algo que faltaba "terminar".
-- **El estado de las partidas activas sigue siendo en memoria.** El fix de la apuesta
-  hace que no se pierda plata, pero si el bot se reinicia a mitad de una partida esa
-  partida en sí se pierde igual (hay que volver a jugar desde cero). Persistir partidas en
-  curso en la base sería un cambio bastante más grande — no lo hice porque no es lo que
-  bloqueaba la distribución, pero avisame si lo querés para más adelante.
+- **El estado de las partidas activas sigue siendo en memoria** — si el bot se reinicia a
+  mitad de una partida, esa partida se pierde (hay que volver a jugar desde cero). Vos sos
+  el host y reiniciar no es el modo normal de operar, así que esto no es un problema del
+  día a día. **Mejora pendiente decidida (no implementada todavía):** en vez de persistir
+  el estado completo de la `Ronda` en la base (cambio grande, complica el schema y la
+  lógica para un caso raro), al arrancar el bot detectar que había partidas activas que se
+  perdieron y devolverle a cada jugador su apuesta **más un extra** de compensación por el
+  corte de conexión. Mucho más simple, sin tocar el modelo de partidas ni agregar tablas
+  nuevas.
 - **Avatar/ícono del bot**: eso se sube a mano en el Developer Portal (Bot > ícono), no es
   algo que se pueda hacer desde código.
 - **Decisión tuya:** cuándo sacar `DISCORD_GUILD_ID` del `.env` para pasar a registro
