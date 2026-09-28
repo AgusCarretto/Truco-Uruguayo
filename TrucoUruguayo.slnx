@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/TrucoUruguayo.Core/TrucoUruguayo.Core.csproj" />
+    <Project Path="src/TrucoUruguayo.Bot/TrucoUruguayo.Bot.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TrucoUruguayo.Core.Tests/TrucoUruguayo.Core.Tests.csproj" />
+    <Project Path="tests/TrucoUruguayo.Bot.Tests/TrucoUruguayo.Bot.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: truco
+      POSTGRES_USER: truco
+      POSTGRES_PASSWORD: truco
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Postgres corre cualquier .sql que encuentre aca la PRIMERA vez que crea el volumen
+      # de datos -- asi el schema.sql del proyecto se aplica solo, sin correrlo a mano.
+      - ./src/TrucoUruguayo.Bot/Datos/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U truco"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DB_CONNECTION_STRING: Host=db;Database=truco;Username=truco;Password=truco
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+
+volumes:
+  db-data:

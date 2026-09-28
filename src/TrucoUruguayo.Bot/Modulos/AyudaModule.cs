@@ -11,6 +11,7 @@ public class AyudaModule : InteractionModuleBase<SocketInteractionContext>
         var componentes = new ComponentBuilder()
             .WithButton("📖 Reglas Básicas", "ayuda_reglas", ButtonStyle.Primary)
             .WithButton("🃏 Valor de las Cartas", "ayuda_cartas", ButtonStyle.Secondary)
+            .WithButton("❓ ¿Cómo se juega?", "como_jugar", ButtonStyle.Secondary)
             .Build();
 
         await RespondAsync(
@@ -27,6 +28,7 @@ public class AyudaModule : InteractionModuleBase<SocketInteractionContext>
             .AddField("Objetivo", "Llegar a los puntos acordados ganando manos y sumando con el Envido.")
             .AddField("La Muestra", "Al inicio se da vuelta una carta. El palo de esta carta define las 'Piezas', que son las cartas más fuertes del juego.")
             .AddField("Envido", "Se canta en la primera mano. Suma el valor de dos cartas del mismo palo + 20. Si tenés una Pieza, suma su valor especial + la carta más alta.")
+            .AddField("Flor", "Si tenés 3 cartas del mismo palo (o Piezas), estás OBLIGADO a cantarla antes de hacer cualquier otra cosa. Si el rival también tiene, se puede subir con Con Flor Envido o Contra Flor al Resto.")
             .AddField("Truco", "El desafío por los puntos de la mano. Se puede escalar a Retruco y Vale 4.")
             .WithColor(Color.Blue)
             .Build();
@@ -59,8 +61,10 @@ public class AyudaModule : InteractionModuleBase<SocketInteractionContext>
             .WithDescription(
                 "Podés jugar de varias formas:\n\n" +
                 "⚔️ Desafiando directo a alguien con `/truco @persona` para arrancar una partida 1 contra 1.\n" +
-                "👤 `/perfil` para ver tus monedas, victorias y derrotas.\n" +
-                "🛒 `/tienda`, `/comprar` y `/inventario` para gastar tus monedas en items.\n" +
+                "👤 `/perfil` para ver tus monedas, victorias, derrotas, nivel, insignias y equipamiento.\n" +
+                "🛒 `/tienda`, `/comprar`, `/inventario` y `/equipar` para gastar tus monedas en items.\n" +
+                "🏆 `/titulos` y `/titulo_equipar` para lucir un título desbloqueado por nivel.\n" +
+                "🪵 `/fondo_equipar` para elegir el fondo de mesa que compraste en la tienda.\n" +
                 "🎁 `/diaria` para reclamar 500 monedas gratis cada 24 horas.\n" +
                 "🏅 `/ranking` para ver el top global, y `/historial` para tus últimas partidas.")
             .WithColor(Color.Blue)
