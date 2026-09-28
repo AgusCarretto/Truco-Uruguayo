@@ -765,6 +765,24 @@ public class RondaTests
         Assert.Throws<InvalidOperationException>(() => ronda.IrseAlMazo(Jugador2));
     }
 
+    [Fact]
+    public void IrseAlMazo_ConUnCantoPendienteDeResponder_TiraExcepcion()
+    {
+        // Sin este chequeo, un jugador podria esquivar un Truco/Envido desfavorable
+        // rindiendose al valor viejo (con un boton de un mensaje anterior) en vez de tener
+        // que responder Quiero/No Quiero a la escalada.
+        var ronda = NuevaRondaConMazoFijo(
+            new[] { new Carta(1, Palo.Espada), new Carta(3, Palo.Basto), new Carta(6, Palo.Copa) },
+            new[] { new Carta(7, Palo.Oro), new Carta(6, Palo.Oro), new Carta(3, Palo.Espada) });
+
+        ronda.GritarTruco(Jugador1, CantoTruco.Truco);
+
+        var excepcion = Record.Exception(() => ronda.IrseAlMazo(Jugador2));
+
+        Assert.IsType<InvalidOperationException>(excepcion);
+        Assert.Equal(EstadoRonda.RespondiendoTruco, ronda.Estado);
+    }
+
     // --- AFK / UltimaActividad ---
 
     [Fact]

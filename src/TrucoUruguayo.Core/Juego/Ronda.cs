@@ -289,6 +289,14 @@ public class Ronda
             throw new InvalidOperationException("La ronda ya finalizo.");
         }
 
+        // Sin este chequeo, un boton "Irse al Mazo" de un mensaje viejo (de antes de que se
+        // cantara un Envido/Truco/Flor) permitiria esquivar una escalada desfavorable
+        // rindiendose al valor viejo en vez de tener que responder Quiero/No Quiero.
+        if (Estado != EstadoRonda.JugandoCartas && Estado != EstadoRonda.EsperandoEnvido)
+        {
+            throw new InvalidOperationException("Hay un canto pendiente de respuesta, resolvelo antes de irte al mazo.");
+        }
+
         var rival = jugadorId == Jugador1Id ? Jugador2Id : Jugador1Id;
         TerminarManoActual(rival, ValorTrucoActual);
     }
