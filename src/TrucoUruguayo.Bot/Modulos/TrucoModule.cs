@@ -220,6 +220,15 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var mano = Context.User.Id == ronda.Jugador1Id ? ronda.ManoJugador1 : ronda.ManoJugador2;
+
+        if (index < 0 || index >= mano.Count)
+        {
+            // Puede pasar si el jugador tiene abierta una vista vieja de "Ver mis cartas"
+            // (de antes de jugar una carta desde otra) y clickea un boton que ya no es valido.
+            await RespondAsync("⚠️ Esa carta ya no está en tu mano. Volvé a abrir 🃏 Ver mis cartas.", ephemeral: true);
+            return;
+        }
+
         var carta = mano[index];
         var jugadorQueJuega = Context.User.Id;
         var faseAntes = ronda.Fase;
