@@ -48,7 +48,9 @@ public class UsuarioRepository
     {
         await using var conexion = new NpgsqlConnection(_connectionString);
 
-        const string sql = "UPDATE usuarios SET monedas = monedas + @Delta WHERE id = @Id";
+        // GREATEST(..., 0) para que nunca quede en negativo, sea cual sea el camino por el
+        // que se llegue a descontar (apuesta, tienda, etc.).
+        const string sql = "UPDATE usuarios SET monedas = GREATEST(monedas + @Delta, 0) WHERE id = @Id";
 
         await conexion.ExecuteAsync(sql, new { Id = (long)discordId, Delta = delta });
     }

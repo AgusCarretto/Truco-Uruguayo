@@ -268,6 +268,18 @@ public class UsuarioRepositoryTests
     }
 
     [Fact]
+    public async Task ActualizarMonedasAsync_DeltaMayorAlSaldo_QuedaEnCeroNoEnNegativo()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 100);
+
+        await repositorio.ActualizarMonedasAsync(usuario.Id, -500);
+
+        var actualizado = await repositorio.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal(0, actualizado!.Monedas);
+    }
+
+    [Fact]
     public async Task SumarVictoriaAsync_SumaUnaVictoriaYNoTocaElXp()
     {
         var repositorio = new UsuarioRepository(_connectionString);
