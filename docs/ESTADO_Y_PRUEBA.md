@@ -1,6 +1,29 @@
 # Estado del proyecto y guía de prueba — rama `claude-updates-deploy-listo`
 
-## Qué se hizo en esta rama
+## Segunda tanda — hardening para uso público real
+
+Después de la primera tanda (deployment), se hizo una revisión pensando en "gente random
+en internet usando esto, incluyendo trolls" y se encontraron 3 problemas reales más:
+
+1. **Exploit: esquivar un Truco/Envido desfavorable con un botón viejo.** `IrseAlMazo` no
+   chequeaba el estado de la ronda — un jugador con, por ejemplo, un Retruco pendiente de
+   responder podía clickear un botón "Irse al Mazo" de un mensaje anterior (de antes de
+   esa escalada) y rendirse al valor viejo y más bajo, en vez de tener que decidir
+   Quiero/No Quiero al valor alto. Arreglado: ahora exige resolver el canto pendiente
+   primero, igual que ya exigían las demás acciones.
+2. **Condición de carrera entre clicks simultáneos.** `Ronda` no tiene ningún lock propio,
+   y Discord.Net puede procesar dos interacciones del mismo canal en paralelo (doble click,
+   reintento por lag de red). Un jugador impaciente clickeando dos veces rápido podía en
+   teoría corromper el estado de la partida. Ahora hay un lock (semáforo) por canal que
+   serializa todo lo que toca ese canal.
+3. **Las monedas podían quedar negativas.** No había ningún piso — gastando en la tienda
+   en el momento justo (mientras una apuesta está en juego) se podía terminar en negativo.
+   Ahora está clampeado a 0 en la base.
+
+También: mensaje de bienvenida cuando el bot se une a un servidor nuevo (antes entraba en
+silencio, sin ninguna pista de por dónde arrancar).
+
+## Qué se hizo en la primera tanda (deployment)
 
 El juego en sí (reglas de Truco/Envido/Flor) ya estaba completo y probado de sesiones
 anteriores. Lo que faltaba para poder **distribuirlo a otros servidores** era todo lo de
@@ -107,5 +130,5 @@ nunca de punta a punta jugando de verdad en Discord con dos cuentas):
 
 ## Tests
 
-`dotnet test TrucoUruguayo.slnx` corre los 193 tests (139 de Core, sin DB; 54 de Bot,
+`dotnet test TrucoUruguayo.slnx` corre los 195 tests (140 de Core, sin DB; 55 de Bot,
 necesitan la Postgres con `schema.sql` aplicado). Todos verdes en esta rama.
