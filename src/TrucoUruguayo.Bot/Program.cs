@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Discord;
 using Discord.Interactions;
@@ -61,6 +62,12 @@ interactions.Log += mensaje =>
     return Task.CompletedTask;
 };
 
+// Discord.Net puede despachar varias interacciones del mismo canal en paralelo (dos clicks
+// rapidos, un reintento por lag, etc.). Ronda no tiene ningun lock propio, asi que sin esto
+// dos jugadas simultaneas podrian pisarse y corromper el estado de la partida. Un semaforo
+// por canal serializa todo lo que toca ese canal sin bloquear el resto del bot.
+var semaforosPorCanal = new ConcurrentDictionary<ulong, SemaphoreSlim>();
+
 client.InteractionCreated += async interaction =>
 {
     try
@@ -84,12 +91,21 @@ client.InteractionCreated += async interaction =>
         return;
     }
 
-    var context = new SocketInteractionContext(client, interaction);
-    var resultado = await interactions.ExecuteCommandAsync(context, services);
-
-    if (!resultado.IsSuccess && !interaction.HasResponded)
+    var semaforo = semaforosPorCanal.GetOrAdd(interaction.ChannelId ?? interaction.User.Id, _ => new SemaphoreSlim(1, 1));
+    await semaforo.WaitAsync();
+    try
     {
-        await interaction.RespondAsync("😵 Hubo un problema al procesar eso, probá de nuevo en un rato.", ephemeral: true);
+        var context = new SocketInteractionContext(client, interaction);
+        var resultado = await interactions.ExecuteCommandAsync(context, services);
+
+        if (!resultado.IsSuccess && !interaction.HasResponded)
+        {
+            await interaction.RespondAsync("😵 Hubo un problema al procesar eso, probá de nuevo en un rato.", ephemeral: true);
+        }
+    }
+    finally
+    {
+        semaforo.Release();
     }
 };
 
@@ -120,6 +136,30 @@ client.Ready += async () =>
     }
 
     await client.SetGameAsync("/truco para jugar | /ayuda", type: ActivityType.Playing);
+};
+
+client.JoinedGuild += async guild =>
+{
+    try
+    {
+        var canal = guild.SystemChannel ?? guild.DefaultChannel;
+        if (canal is null || !guild.CurrentUser.GetPermissions(canal).SendMessages)
+        {
+            return;
+        }
+
+        var embed = new EmbedBuilder()
+            .WithTitle("🎉 ¡Gracias por sumar Truco Uruguayo!")
+            .WithDescription("Para arrancar: `/truco @alguien` para desafiar a jugar, o `/ayuda` para ver las reglas y todos los comandos.")
+            .WithColor(Color.Gold)
+            .Build();
+
+        await canal.SendMessageAsync(embed: embed);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"No se pudo mandar el mensaje de bienvenida en {guild.Name}: {ex.Message}");
+    }
 };
 
 async Task EnviarBienvenidaAsync(SocketInteraction interaction)
