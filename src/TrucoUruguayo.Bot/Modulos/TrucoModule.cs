@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using System.Linq;
 using TrucoUruguayo.Bot.Datos;
 using TrucoUruguayo.Bot.Modelo;
 using TrucoUruguayo.Bot.Servicios;
@@ -193,7 +194,7 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         var componentes = new ComponentBuilder();
         for (var i = 0; i < mano.Count; i++)
         {
-            componentes.WithButton(mano[i].ToString(), $"jugar_carta_{i}", ButtonStyle.Primary);
+            componentes.WithButton(mano[i].ToString(), $"jugar_carta_{mano[i].Numero}_{mano[i].Palo}", ButtonStyle.Primary);
         }
 
         componentes.WithButton("📊 Orden de las cartas", "ayuda_cartas", ButtonStyle.Secondary, row: 4);
@@ -204,8 +205,8 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         await RespondWithFileAsync(streamMano, "mano.png", text: turnoTexto, components: componentes.Build(), ephemeral: true);
     }
 
-    [ComponentInteraction("jugar_carta_*")]
-    public async Task JugarCarta(int index)
+    [ComponentInteraction("jugar_carta_*_*")]
+    public async Task JugarCarta(int numero, string palo)
     {
         if (!_gestorPartidas.PartidasActivas.TryGetValue(Context.Channel.Id, out var ronda))
         {
@@ -221,15 +222,19 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
 
         var mano = Context.User.Id == ronda.Jugador1Id ? ronda.ManoJugador1 : ronda.ManoJugador2;
 
-        if (index < 0 || index >= mano.Count)
+        // El boton identifica la carta por numero+palo (no por posicion): si solo fuera por
+        // indice, un click en un boton de una vista vieja de "Ver mis cartas" (de antes de
+        // jugar otra carta) podia terminar jugando una carta distinta a la del boton, porque
+        // los indices se corren al sacar cartas de la mano. Buscando por numero+palo, un
+        // boton viejo de una carta que ya se jugo simplemente no matchea ninguna.
+        var carta = mano.FirstOrDefault(c => c.Numero == numero && c.Palo.ToString() == palo);
+
+        if (carta is null)
         {
-            // Puede pasar si el jugador tiene abierta una vista vieja de "Ver mis cartas"
-            // (de antes de jugar una carta desde otra) y clickea un boton que ya no es valido.
             await RespondAsync("⚠️ Esa carta ya no está en tu mano. Volvé a abrir 🃏 Ver mis cartas.", ephemeral: true);
             return;
         }
 
-        var carta = mano[index];
         var jugadorQueJuega = Context.User.Id;
         var faseAntes = ronda.Fase;
         var muestraAntes = ronda.Muestra;

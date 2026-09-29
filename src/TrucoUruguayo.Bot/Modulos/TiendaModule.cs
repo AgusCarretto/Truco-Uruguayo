@@ -69,15 +69,17 @@ public class TiendaModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("equipar", "Equipa o desequipa un item de tu inventario")]
     public async Task EquiparAsync([Summary("item_id", "El ID del item a equipar/desequipar")] int itemId)
     {
-        var nuevoEstado = await _tiendaRepository.AlternarEquipamientoAsync(Context.User.Id, itemId);
+        var resultado = await _tiendaRepository.AlternarEquipamientoAsync(Context.User.Id, itemId);
 
-        if (nuevoEstado is null)
+        var mensaje = resultado switch
         {
-            await RespondAsync("❓ No tenés ese item en tu inventario.", ephemeral: true);
-            return;
-        }
+            ResultadoEquipar.Equipado => "⭐ Item equipado correctamente.",
+            ResultadoEquipar.Desequipado => "📤 Item desequipado correctamente.",
+            ResultadoEquipar.NoPoseeElItem => "❓ No tenés ese item en tu inventario.",
+            ResultadoEquipar.SeEquipaConOtroComando => "ℹ️ Ese item se equipa con /fondo_equipar o /titulo_equipar, no con /equipar.",
+            _ => "⚠️ Ocurrió un error inesperado.",
+        };
 
-        var mensaje = nuevoEstado.Value ? "⭐ Item equipado correctamente." : "📤 Item desequipado correctamente.";
         await RespondAsync(mensaje, ephemeral: true);
     }
 }

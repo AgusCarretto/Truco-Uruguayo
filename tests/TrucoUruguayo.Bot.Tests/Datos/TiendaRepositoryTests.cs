@@ -1,3 +1,4 @@
+using System.Linq;
 using TrucoUruguayo.Bot.Datos;
 using TrucoUruguayo.Bot.Tests.Helpers;
 using Xunit;
@@ -105,12 +106,12 @@ public class TiendaRepositoryTests
         var primerToggle = await repositorioTienda.AlternarEquipamientoAsync(usuario.Id, item.Id);
         var segundoToggle = await repositorioTienda.AlternarEquipamientoAsync(usuario.Id, item.Id);
 
-        Assert.True(primerToggle);
-        Assert.False(segundoToggle);
+        Assert.Equal(ResultadoEquipar.Equipado, primerToggle);
+        Assert.Equal(ResultadoEquipar.Desequipado, segundoToggle);
     }
 
     [Fact]
-    public async Task AlternarEquipamientoAsync_ItemQueNoPosee_DevuelveNull()
+    public async Task AlternarEquipamientoAsync_ItemQueNoPosee_DevuelveNoPoseeElItem()
     {
         var repositorioTienda = new TiendaRepository(_connectionString);
 
@@ -119,6 +120,25 @@ public class TiendaRepositoryTests
 
         var resultado = await repositorioTienda.AlternarEquipamientoAsync(usuario.Id, item.Id);
 
-        Assert.Null(resultado);
+        Assert.Equal(ResultadoEquipar.NoPoseeElItem, resultado);
+    }
+
+    [Theory]
+    [InlineData("Fondo Póker")]
+    [InlineData("Título: Adinerado")]
+    public async Task AlternarEquipamientoAsync_ItemDeFondoOTitulo_SeEquipaConOtroComando(string nombre)
+    {
+        var repositorioTienda = new TiendaRepository(_connectionString);
+
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 1000);
+        await using var item = await ItemDePrueba.CrearAsync(_connectionString, precio: 100, nombre: nombre);
+        await repositorioTienda.ComprarItemAsync(usuario.Id, item.Id);
+
+        var resultado = await repositorioTienda.AlternarEquipamientoAsync(usuario.Id, item.Id);
+
+        Assert.Equal(ResultadoEquipar.SeEquipaConOtroComando, resultado);
+
+        var inventario = await repositorioTienda.ObtenerInventarioAsync(usuario.Id);
+        Assert.False(inventario.Single(i => i.ItemId == item.Id).Equipado);
     }
 }

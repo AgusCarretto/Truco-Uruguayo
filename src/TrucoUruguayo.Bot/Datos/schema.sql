@@ -117,10 +117,11 @@ INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
 SELECT 'Título: Billonario', 'Titulo comprable. Se muestra en tu perfil junto a tu nombre.', 100000, '🏦'
 WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Título: Billonario');
 
--- Insignias: cosmeticos comprables que se equipan con el /equipar generico (igual que los
--- fondos) y aparecen en /perfil bajo "Equipamiento Activo" con su propio emoji y nombre. A
--- diferencia de los titulos (un solo titulo_equipado por usuario), se pueden tener varias
--- insignias equipadas a la vez, ya que /equipar solo prende/apaga el flag de cada item.
+-- Insignias: cosmeticos comprables que se equipan con el /equipar generico y aparecen en
+-- /perfil bajo "Equipamiento Activo" con su propio emoji y nombre. A diferencia de los
+-- fondos y titulos (uno solo a la vez, con su propio comando exclusivo), se pueden tener
+-- varias insignias equipadas al mismo tiempo, ya que /equipar solo prende/apaga el flag de
+-- cada item -- ver TiendaRepository.AlternarEquipamientoAsync.
 INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
 SELECT 'Insignia: Billete Dorado', 'Insignia cosmetica que aparece junto a tu nombre en /perfil.', 3000, '💵'
 WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Insignia: Billete Dorado');
@@ -128,6 +129,17 @@ WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Insignia: Billete D
 INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
 SELECT 'Insignia: Lluvia de Billetes', 'Insignia cosmetica que aparece junto a tu nombre en /perfil.', 12000, '🤑'
 WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Insignia: Lluvia de Billetes');
+
+-- Antes de este fix, los fondos y titulos comprables tambien se podian "equipar" con el
+-- /equipar generico (sin ningun efecto real en el juego, ya que lo unico que cambia la
+-- mesa/el titulo mostrado es fondo_equipado/titulo_equipado en usuarios) -- eso dejaba
+-- "Equipamiento Activo" en /perfil mostrando fondos viejos que no eran el que realmente se
+-- usaba, causando confusion ("compre Poker pero no me cambia nada"). Se desequipan los que
+-- hayan quedado asi marcados de antes de este fix; a partir de ahora TiendaRepository ya no
+-- deja tocarlos con /equipar.
+UPDATE inventario_usuarios
+SET equipado = FALSE
+WHERE item_id IN (SELECT id FROM tienda_items WHERE nombre LIKE 'Fondo %' OR nombre LIKE 'Título: %');
 
 CREATE TABLE IF NOT EXISTS estadisticas_usuario (
     discord_id BIGINT PRIMARY KEY,

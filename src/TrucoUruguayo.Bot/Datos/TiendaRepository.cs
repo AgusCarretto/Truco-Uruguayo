@@ -12,9 +12,26 @@ public enum ResultadoCompra
     ItemNoExiste,
 }
 
+public enum ResultadoEquipar
+{
+    Equipado,
+    Desequipado,
+    NoPoseeElItem,
+    SeEquipaConOtroComando,
+}
+
 public class TiendaRepository
 {
     private readonly string _connectionString;
+
+    // Los fondos y titulos comprables tienen su propio comando exclusivo (uno equipado a la
+    // vez: /fondo_equipar, /titulo_equipar) que es el que realmente afecta el juego. No se
+    // pueden alternar con el /equipar generico -- si se pudiera, quedaban marcados como
+    // "equipados" en el inventario sin cambiar nada de verdad, lo cual confundia (aparecian
+    // en "Equipamiento Activo" fondos distintos al que en realidad se usaba en la mesa). El
+    // /equipar generico queda para cosmeticos sin exclusividad, como las insignias.
+    private const string PrefijoItemFondo = "Fondo ";
+    private const string PrefijoItemTitulo = "Título: ";
 
     public TiendaRepository(string connectionString)
     {
@@ -54,18 +71,41 @@ public class TiendaRepository
         return await conexion.QueryAsync<ItemInventario>(sql, new { Id = (long)discordId });
     }
 
-    public async Task<bool?> AlternarEquipamientoAsync(ulong discordId, int itemId)
+    public async Task<ResultadoEquipar> AlternarEquipamientoAsync(ulong discordId, int itemId)
     {
         await using var conexion = new NpgsqlConnection(_connectionString);
 
-        const string sql = """
+        const string sqlNombre = """
+            SELECT tienda_items.nombre
+            FROM inventario_usuarios
+            JOIN tienda_items ON tienda_items.id = inventario_usuarios.item_id
+            WHERE inventario_usuarios.usuario_id = @Id AND inventario_usuarios.item_id = @ItemId
+            """;
+
+        var nombre = await conexion.QuerySingleOrDefaultAsync<string?>(
+            sqlNombre, new { Id = (long)discordId, ItemId = itemId });
+
+        if (nombre is null)
+        {
+            return ResultadoEquipar.NoPoseeElItem;
+        }
+
+        if (nombre.StartsWith(PrefijoItemFondo, StringComparison.Ordinal)
+            || nombre.StartsWith(PrefijoItemTitulo, StringComparison.Ordinal))
+        {
+            return ResultadoEquipar.SeEquipaConOtroComando;
+        }
+
+        const string sqlToggle = """
             UPDATE inventario_usuarios
             SET equipado = NOT equipado
             WHERE usuario_id = @Id AND item_id = @ItemId
             RETURNING equipado
             """;
 
-        return await conexion.QuerySingleOrDefaultAsync<bool?>(sql, new { Id = (long)discordId, ItemId = itemId });
+        var equipado = await conexion.QuerySingleAsync<bool>(sqlToggle, new { Id = (long)discordId, ItemId = itemId });
+
+        return equipado ? ResultadoEquipar.Equipado : ResultadoEquipar.Desequipado;
     }
 
     public async Task<ResultadoCompra> ComprarItemAsync(ulong discordId, int itemId)

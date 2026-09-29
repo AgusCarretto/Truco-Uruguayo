@@ -1,5 +1,34 @@
 # Estado del proyecto y guía de prueba — rama `claude-updates-deploy-listo`
 
+## Cuarta tanda — 2 bugs reportados jugando en vivo
+
+1. **Fondos "equipados" de más, y el de Póker "no cambiaba nada".** El bug real no era el
+   renderizado (Póker sí se estaba dibujando bien, con sus fichas) sino que `/equipar` (el
+   comando genérico de inventario) dejaba marcar como "equipado" cualquier item, incluidos
+   fondos y títulos comprados — sin que eso tuviera ningún efecto real, porque lo único que
+   cambia la mesa es `usuarios.fondo_equipado` (que se setea con `/fondo_equipar`, no con
+   `/equipar`). Resultado: "Equipamiento Activo" en `/perfil` mostraba fondos viejos que no
+   eran el que en verdad se usaba en la partida, dando la sensación de que equipar Póker "no
+   hacía nada". Arreglado: `/equipar` ahora rechaza fondos y títulos comprables con un
+   mensaje que indica el comando correcto (`/fondo_equipar` / `/titulo_equipar`); quedan
+   reservados para cosméticos sin exclusividad como las insignias. Un `UPDATE` en
+   `schema.sql` desequipa los que hayan quedado mal marcados de antes de este fix.
+2. **Un botón viejo de "Ver mis cartas" podía jugar una carta distinta a la del botón.**
+   Los botones de jugar carta identificaban la carta por posición en la mano (`jugar_carta_0`,
+   `jugar_carta_1`, ...). Al jugar una carta, la mano se acorta y los índices se corren — un
+   click en un botón de una vista vieja (de antes de jugar otra carta) podía terminar jugando
+   la carta que *ahora* está en esa posición, no la que decía el botón. Arreglado: el botón
+   ahora identifica la carta por número+palo (`jugar_carta_7_Espada`), no por posición. Un
+   botón de una carta ya jugada simplemente no matchea nada y tira un aviso claro en vez de
+   jugar la carta equivocada.
+   - Sobre "bloquear los botones viejos": no hace falta deshabilitarlos activamente — con la
+     carta identificada por número+palo, un botón viejo de una carta que ya no está en la
+     mano deja de tener efecto (da el aviso de "esa carta ya no está en tu mano"), y uno de
+     una carta que sigue en la mano juega esa carta correctamente sin importar en qué
+     posición haya quedado. Deshabilitar los mensajes viejos de verdad requeriría guardar y
+     editar cada mensaje anterior — no se hizo porque el fix de arriba ya cubre el problema
+     real (jugar la carta equivocada), y agregar eso sería más complejidad por poco más.
+
 ## Tercera tanda — iconos, títulos y insignias comprables
 
 - **Cada item de `/tienda` tiene ahora su propio emoji** (columna `tienda_items.emoji`),
@@ -12,10 +41,12 @@
   revisa primero si es un título por nivel (`ConstantesTitulos`) y si no, si el jugador
   compró el item `"Título: " + nombre` en la tienda.
 - **2 insignias comprables** (cosmético, sin efecto en el juego): 💵 Insignia: Billete
-  Dorado (3.000) y 🤑 Insignia: Lluvia de Billetes (12.000). Se compran y equipan con el
-  mecanismo genérico `/comprar` + `/equipar` que ya usan los fondos — al equiparlas
-  aparecen en "Equipamiento Activo" en `/perfil`. A diferencia de los títulos (uno solo a
-  la vez), se pueden tener varias insignias equipadas al mismo tiempo.
+  Dorado (3.000) y 🤑 Insignia: Lluvia de Billetes (12.000). Se compran con `/comprar` y se
+  equipan con el `/equipar` genérico — al equiparlas aparecen en "Equipamiento Activo" en
+  `/perfil`. A diferencia de los títulos (uno solo a la vez), se pueden tener varias
+  insignias equipadas al mismo tiempo. (Nota: originalmente los fondos también pasaban por
+  `/equipar` — eso causó el bug de la cuarta tanda, ver arriba; ahora `/equipar` es
+  exclusivo de insignias.)
 - Se sacaron 3 items placeholder de una etapa muy vieja del proyecto que estaban en la base
   de datos pero no conectados a ningún efecto real: "Mazo Dorado", "Título: Campeón" y
   "Emoji Personalizado". Si alguien ya los había comprado, no se les cobró nada especial
@@ -180,5 +211,5 @@ un reinicio simplemente mate las partidas en curso sin avisar:
 
 ## Tests
 
-`dotnet test TrucoUruguayo.slnx` corre los 199 tests (140 de Core, sin DB; 59 de Bot,
+`dotnet test TrucoUruguayo.slnx` corre los 201 tests (140 de Core, sin DB; 61 de Bot,
 necesitan la Postgres con `schema.sql` aplicado). Todos verdes en esta rama.
