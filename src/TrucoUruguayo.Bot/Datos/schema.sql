@@ -56,6 +56,15 @@ DELETE FROM inventario_usuarios
 WHERE item_id IN (SELECT id FROM tienda_items WHERE nombre = 'Mazo Clásico');
 DELETE FROM tienda_items WHERE nombre = 'Mazo Clásico';
 
+-- "Mazo Dorado", "Título: Campeón" y "Emoji Personalizado" son placeholders de una etapa
+-- muy temprana del proyecto (de antes de que existiera este schema.sql): ninguno de los
+-- tres esta conectado a ningun efecto real (a diferencia de los fondos, que si cambian la
+-- mesa via fondo_equipado) -- comprarlos y equiparlos no hace nada. Se sacan de la tienda
+-- junto con cualquier compra/equipamiento que los referenciara.
+DELETE FROM inventario_usuarios
+WHERE item_id IN (SELECT id FROM tienda_items WHERE nombre IN ('Mazo Dorado', 'Título: Campeón', 'Emoji Personalizado'));
+DELETE FROM tienda_items WHERE nombre IN ('Mazo Dorado', 'Título: Campeón', 'Emoji Personalizado');
+
 -- Fondos de mesa comprables (ver GeneradorImagenes / UsuarioRepository.EquiparFondoAsync).
 -- El fondo de madera original es gratis (default de todos), estos son los nuevos. No hay
 -- UNIQUE en nombre, asi que se usa WHERE NOT EXISTS para que insertarlos sea idempotente

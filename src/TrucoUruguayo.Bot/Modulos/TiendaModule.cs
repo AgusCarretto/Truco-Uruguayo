@@ -54,7 +54,7 @@ public class TiendaModule : InteractionModuleBase<SocketInteractionContext>
         var lineas = items.Select(item =>
         {
             var indicador = item.Equipado ? " ⭐ [Equipado]" : "";
-            return $"🎁 {item.Nombre} | 🗓️ Comprado: {item.FechaCompra:dd/MM/yyyy}{indicador}";
+            return $"🎁 #{item.ItemId} - {item.Nombre} | 🗓️ Comprado: {item.FechaCompra:dd/MM/yyyy}{indicador}";
         });
 
         var embed = new EmbedBuilder()
