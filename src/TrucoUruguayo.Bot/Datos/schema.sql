@@ -72,6 +72,13 @@ INSERT INTO tienda_items (nombre, descripcion, precio)
 SELECT 'Fondo Madera Oscura', 'Cambia el fondo de la mesa a una madera oscura.', 15000
 WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Madera Oscura');
 
+-- assets/fondos/fondo_maderaOscura.jpg en realidad es un AVIF con la extension cambiada
+-- (SixLabors.ImageSharp no lo puede decodificar, revienta con UnknownImageFormatException
+-- al intentar usarlo). Desactivado hasta que se reemplace por un JPEG/PNG de verdad -- ver
+-- docs/ESTADO_Y_PRUEBA.md. Sacar este UPDATE (o poner activo = TRUE a mano) cuando este
+-- arreglado.
+UPDATE tienda_items SET activo = FALSE WHERE nombre = 'Fondo Madera Oscura';
+
 CREATE TABLE IF NOT EXISTS estadisticas_usuario (
     discord_id BIGINT PRIMARY KEY,
     partidas_ganadas INT NOT NULL DEFAULT 0,
