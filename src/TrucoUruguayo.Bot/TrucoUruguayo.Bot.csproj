@@ -14,7 +14,12 @@
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.2" />
+    <!-- Fijado en la ultima version 2.1.x (Apache 2.0, sin licencia comercial): las 3.x/4.x
+         de ImageSharp pasaron a un licenciamiento pago (Six Labors Split License) cuyo
+         build target directamente FALLA el build en entornos de CI que no tengan una
+         licencia cargada (Railway, GitHub Actions, etc. setean CI=true); localmente solo
+         se veia como warning porque no corriamos con esa variable seteada. -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
   </ItemGroup>
 
   <ItemGroup>
