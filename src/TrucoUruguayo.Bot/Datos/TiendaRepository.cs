@@ -26,7 +26,7 @@ public class TiendaRepository
         await using var conexion = new NpgsqlConnection(_connectionString);
 
         const string sql = """
-            SELECT id AS Id, nombre AS Nombre, descripcion AS Descripcion, precio AS Precio
+            SELECT id AS Id, nombre AS Nombre, descripcion AS Descripcion, precio AS Precio, emoji AS Emoji
             FROM tienda_items
             WHERE activo = TRUE
             ORDER BY id
@@ -42,6 +42,7 @@ public class TiendaRepository
         const string sql = """
             SELECT inventario_usuarios.item_id AS ItemId,
                    tienda_items.nombre AS Nombre,
+                   tienda_items.emoji AS Emoji,
                    inventario_usuarios.fecha_compra AS FechaCompra,
                    inventario_usuarios.equipado AS Equipado
             FROM inventario_usuarios

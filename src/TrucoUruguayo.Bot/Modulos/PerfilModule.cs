@@ -57,7 +57,7 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
 
         if (equipados.Count > 0)
         {
-            embed.AddField("🏆 Equipamiento Activo", string.Join('\n', equipados.Select(item => item.Nombre)));
+            embed.AddField("🏆 Equipamiento Activo", string.Join('\n', equipados.Select(item => $"{item.Emoji} {item.Nombre}")));
         }
 
         await RespondAsync(embed: embed.Build());
@@ -100,13 +100,17 @@ public class PerfilModule : InteractionModuleBase<SocketInteractionContext>
         [Choice("Maestro del Retruco", "Maestro del Retruco")]
         [Choice("Dueño de la Muestra", "Dueño de la Muestra")]
         [Choice("Leyenda del Truco", "Leyenda del Truco")]
+        [Choice("💵 Adinerado (comprable)", "Adinerado")]
+        [Choice("💰 Millonario (comprable)", "Millonario")]
+        [Choice("💎 Magnate (comprable)", "Magnate")]
+        [Choice("🏦 Billonario (comprable)", "Billonario")]
         string titulo)
     {
         var exito = await _usuarioRepository.EquiparTituloAsync(Context.User.Id, titulo);
 
         if (!exito)
         {
-            await RespondAsync("🔒 Todavía no tenés el nivel para ese título.", ephemeral: true);
+            await RespondAsync("🔒 Todavía no tenés ese título (te falta el nivel, o comprarlo en /tienda).", ephemeral: true);
             return;
         }
 

@@ -212,23 +212,45 @@ public class UsuarioRepository
         public int Nivel { get; set; }
     }
 
+    // Los titulos comprables en la tienda se guardan con este prefijo en tienda_items.nombre
+    // (ej. "Título: Millonario") para no confundirlos con ningun otro tipo de item (fondos,
+    // insignias) que el usuario tambien pueda tener en su inventario.
+    private const string PrefijoItemTitulo = "Título: ";
+
     public async Task<bool> EquiparTituloAsync(ulong discordId, string titulo)
     {
-        if (!ConstantesTitulos.TitulosPorNivel.ContainsValue(titulo))
+        if (ConstantesTitulos.TitulosPorNivel.ContainsValue(titulo))
         {
-            return false;
-        }
+            var usuario = await ObtenerUsuarioAsync(discordId);
+            if (usuario is null)
+            {
+                return false;
+            }
 
-        var usuario = await ObtenerUsuarioAsync(discordId);
-        if (usuario is null)
-        {
-            return false;
+            var nivelRequerido = ConstantesTitulos.TitulosPorNivel.First(kv => kv.Value == titulo).Key;
+            if (usuario.Nivel < nivelRequerido)
+            {
+                return false;
+            }
         }
-
-        var nivelRequerido = ConstantesTitulos.TitulosPorNivel.First(kv => kv.Value == titulo).Key;
-        if (usuario.Nivel < nivelRequerido)
+        else
         {
-            return false;
+            await using var conexionCheck = new NpgsqlConnection(_connectionString);
+
+            const string sqlPoseeTitulo = """
+                SELECT 1
+                FROM inventario_usuarios
+                JOIN tienda_items ON tienda_items.id = inventario_usuarios.item_id
+                WHERE inventario_usuarios.usuario_id = @Id AND tienda_items.nombre = @Nombre
+                """;
+
+            var poseeTitulo = await conexionCheck.QuerySingleOrDefaultAsync<int?>(
+                sqlPoseeTitulo, new { Id = (long)discordId, Nombre = PrefijoItemTitulo + titulo });
+
+            if (poseeTitulo is null)
+            {
+                return false;
+            }
         }
 
         await using var conexion = new NpgsqlConnection(_connectionString);

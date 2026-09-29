@@ -4,6 +4,7 @@ public class ItemInventario
 {
     public int ItemId { get; set; }
     public string Nombre { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "🛍️";
     public DateTime FechaCompra { get; set; }
     public bool Equipado { get; set; }
 }

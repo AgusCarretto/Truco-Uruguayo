@@ -38,8 +38,11 @@ CREATE TABLE IF NOT EXISTS tienda_items (
     nombre TEXT NOT NULL,
     descripcion TEXT NOT NULL,
     precio INTEGER NOT NULL,
-    activo BOOLEAN NOT NULL DEFAULT TRUE
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    emoji VARCHAR(10) NOT NULL DEFAULT '🛍️'
 );
+
+ALTER TABLE tienda_items ADD COLUMN IF NOT EXISTS emoji VARCHAR(10) NOT NULL DEFAULT '🛍️';
 
 CREATE TABLE IF NOT EXISTS inventario_usuarios (
     usuario_id BIGINT NOT NULL,
@@ -87,6 +90,44 @@ WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Fondo Madera Oscura
 -- docs/ESTADO_Y_PRUEBA.md. Sacar este UPDATE (o poner activo = TRUE a mano) cuando este
 -- arreglado.
 UPDATE tienda_items SET activo = FALSE WHERE nombre = 'Fondo Madera Oscura';
+
+-- Emojis mas propios que el generico 🛍️/🎁 de antes, uno por item segun lo que representa.
+UPDATE tienda_items SET emoji = '🟩' WHERE nombre = 'Fondo Verde Liso';
+UPDATE tienda_items SET emoji = '♠️' WHERE nombre = 'Fondo Póker';
+UPDATE tienda_items SET emoji = '🪵' WHERE nombre = 'Fondo Madera Oscura';
+
+-- Titulos comprables (independientes de los titulos por nivel de ConstantesTitulos). Se
+-- equipan con /titulo_equipar igual que los de nivel; UsuarioRepository.EquiparTituloAsync
+-- valida la compra buscando el item 'Título: <nombre>' en el inventario. El nombre en la
+-- tienda lleva el prefijo para que se lea claro en /tienda, pero lo que queda guardado en
+-- usuarios.titulo_equipado es el nombre sin el prefijo (ej. "Millonario").
+INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
+SELECT 'Título: Adinerado', 'Titulo comprable. Se muestra en tu perfil junto a tu nombre.', 6000, '💵'
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Título: Adinerado');
+
+INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
+SELECT 'Título: Millonario', 'Titulo comprable. Se muestra en tu perfil junto a tu nombre.', 20000, '💰'
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Título: Millonario');
+
+INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
+SELECT 'Título: Magnate', 'Titulo comprable. Se muestra en tu perfil junto a tu nombre.', 50000, '💎'
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Título: Magnate');
+
+INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
+SELECT 'Título: Billonario', 'Titulo comprable. Se muestra en tu perfil junto a tu nombre.', 100000, '🏦'
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Título: Billonario');
+
+-- Insignias: cosmeticos comprables que se equipan con el /equipar generico (igual que los
+-- fondos) y aparecen en /perfil bajo "Equipamiento Activo" con su propio emoji y nombre. A
+-- diferencia de los titulos (un solo titulo_equipado por usuario), se pueden tener varias
+-- insignias equipadas a la vez, ya que /equipar solo prende/apaga el flag de cada item.
+INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
+SELECT 'Insignia: Billete Dorado', 'Insignia cosmetica que aparece junto a tu nombre en /perfil.', 3000, '💵'
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Insignia: Billete Dorado');
+
+INSERT INTO tienda_items (nombre, descripcion, precio, emoji)
+SELECT 'Insignia: Lluvia de Billetes', 'Insignia cosmetica que aparece junto a tu nombre en /perfil.', 12000, '🤑'
+WHERE NOT EXISTS (SELECT 1 FROM tienda_items WHERE nombre = 'Insignia: Lluvia de Billetes');
 
 CREATE TABLE IF NOT EXISTS estadisticas_usuario (
     discord_id BIGINT PRIMARY KEY,

@@ -81,6 +81,34 @@ public class UsuarioRepositoryTests
     }
 
     [Fact]
+    public async Task EquiparTituloAsync_TituloComprableSinComprar_DevuelveFalse()
+    {
+        var repositorio = new UsuarioRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString);
+        await using var item = await ItemDePrueba.CrearAsync(_connectionString, nombre: "Título: Adinerado");
+
+        var exito = await repositorio.EquiparTituloAsync(usuario.Id, "Adinerado");
+
+        Assert.False(exito);
+    }
+
+    [Fact]
+    public async Task EquiparTituloAsync_TituloComprado_EquipaYDevuelveTrue()
+    {
+        var repositorioUsuarios = new UsuarioRepository(_connectionString);
+        var repositorioTienda = new TiendaRepository(_connectionString);
+        await using var usuario = await UsuarioDePrueba.CrearAsync(_connectionString, monedas: 10_000);
+        await using var item = await ItemDePrueba.CrearAsync(_connectionString, precio: 6000, nombre: "Título: Adinerado");
+        await repositorioTienda.ComprarItemAsync(usuario.Id, item.Id);
+
+        var exito = await repositorioUsuarios.EquiparTituloAsync(usuario.Id, "Adinerado");
+
+        Assert.True(exito);
+        var actualizado = await repositorioUsuarios.ObtenerUsuarioAsync(usuario.Id);
+        Assert.Equal("Adinerado", actualizado!.TituloEquipado);
+    }
+
+    [Fact]
     public async Task EquiparFondoAsync_FondoMadera_SiempreExitosoSinNecesidadDeComprarlo()
     {
         var repositorio = new UsuarioRepository(_connectionString);

@@ -1,5 +1,30 @@
 # Estado del proyecto y guía de prueba — rama `claude-updates-deploy-listo`
 
+## Tercera tanda — iconos, títulos y insignias comprables
+
+- **Cada item de `/tienda` tiene ahora su propio emoji** (columna `tienda_items.emoji`),
+  en vez del genérico 🛍️/🎁 fijo que se usaba antes sin importar qué fuera el item. Se ve
+  en `/tienda`, `/inventario` y en "Equipamiento Activo" de `/perfil`.
+- **4 títulos comprables nuevos** además de los títulos por nivel: 💵 Adinerado (6.000),
+  💰 Millonario (20.000), 💎 Magnate (50.000), 🏦 Billonario (100.000). Se compran con
+  `/comprar` y se equipan con `/titulo_equipar` (mismo comando que los títulos por nivel,
+  ahora con estas 4 opciones nuevas en el desplegable). `UsuarioRepository.EquiparTituloAsync`
+  revisa primero si es un título por nivel (`ConstantesTitulos`) y si no, si el jugador
+  compró el item `"Título: " + nombre` en la tienda.
+- **2 insignias comprables** (cosmético, sin efecto en el juego): 💵 Insignia: Billete
+  Dorado (3.000) y 🤑 Insignia: Lluvia de Billetes (12.000). Se compran y equipan con el
+  mecanismo genérico `/comprar` + `/equipar` que ya usan los fondos — al equiparlas
+  aparecen en "Equipamiento Activo" en `/perfil`. A diferencia de los títulos (uno solo a
+  la vez), se pueden tener varias insignias equipadas al mismo tiempo.
+- Se sacaron 3 items placeholder de una etapa muy vieja del proyecto que estaban en la base
+  de datos pero no conectados a ningún efecto real: "Mazo Dorado", "Título: Campeón" y
+  "Emoji Personalizado". Si alguien ya los había comprado, no se les cobró nada especial
+  por eso (avisar si hay que reponer monedas a alguien que los tuviera).
+- El marcador de puntos ya no usa "palitos" (`|||`) al lado del número — con un par de
+  manos esa cadena se hacía larga y tapaba el resto del mensaje. Ahora es solo el número.
+- `/inventario` ahora muestra el `#id` de cada item (antes solo aparecía en `/tienda`,
+  haciendo difícil saber qué ID pasarle a `/equipar`).
+
 ## Segunda tanda — hardening para uso público real
 
 Después de la primera tanda (deployment), se hizo una revisión pensando en "gente random
@@ -155,5 +180,5 @@ un reinicio simplemente mate las partidas en curso sin avisar:
 
 ## Tests
 
-`dotnet test TrucoUruguayo.slnx` corre los 197 tests (140 de Core, sin DB; 57 de Bot,
+`dotnet test TrucoUruguayo.slnx` corre los 199 tests (140 de Core, sin DB; 59 de Bot,
 necesitan la Postgres con `schema.sql` aplicado). Todos verdes en esta rama.

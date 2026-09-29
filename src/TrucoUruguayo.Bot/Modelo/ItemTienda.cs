@@ -6,4 +6,5 @@ public class ItemTienda
     public string Nombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public int Precio { get; set; }
+    public string Emoji { get; set; } = "🛍️";
 }

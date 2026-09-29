@@ -18,7 +18,7 @@ public class TiendaModule : InteractionModuleBase<SocketInteractionContext>
     {
         var items = await _tiendaRepository.ObtenerItemsTiendaAsync();
 
-        var lineas = items.Select(item => $"🛍️ #{item.Id} - {item.Nombre} | 🪙 {item.Precio} monedas");
+        var lineas = items.Select(item => $"{item.Emoji} #{item.Id} - {item.Nombre} | 🪙 {item.Precio} monedas");
 
         var embed = new EmbedBuilder()
             .WithTitle("🛒 Tienda")
@@ -54,7 +54,7 @@ public class TiendaModule : InteractionModuleBase<SocketInteractionContext>
         var lineas = items.Select(item =>
         {
             var indicador = item.Equipado ? " ⭐ [Equipado]" : "";
-            return $"🎁 #{item.ItemId} - {item.Nombre} | 🗓️ Comprado: {item.FechaCompra:dd/MM/yyyy}{indicador}";
+            return $"{item.Emoji} #{item.ItemId} - {item.Nombre} | 🗓️ Comprado: {item.FechaCompra:dd/MM/yyyy}{indicador}";
         });
 
         var embed = new EmbedBuilder()
