@@ -10,7 +10,23 @@ using Npgsql;
 using TrucoUruguayo.Bot.Datos;
 using TrucoUruguayo.Bot.Servicios;
 
-Env.Load();
+// Env.Load() sin argumentos busca ".env" en el directorio de trabajo actual, que NO es
+// necesariamente el del proyecto (ej. "dotnet run --project src/TrucoUruguayo.Bot" desde
+// la raiz del repo deja el CWD en la raiz, no al lado del .env). AppContext.BaseDirectory
+// si es siempre la carpeta del binario compilado, asi que subimos desde ahi hasta
+// encontrar el .env -- funciona sin importar desde donde se invoque. En Docker no hay
+// ningun .env (las env vars ya vienen seteadas de afuera) asi que la busqueda no encuentra
+// nada y no pasa nada: Environment.GetEnvironmentVariable las lee igual.
+var directorioConEnv = new DirectoryInfo(AppContext.BaseDirectory);
+while (directorioConEnv is not null && !File.Exists(Path.Combine(directorioConEnv.FullName, ".env")))
+{
+    directorioConEnv = directorioConEnv.Parent;
+}
+
+if (directorioConEnv is not null)
+{
+    Env.Load(Path.Combine(directorioConEnv.FullName, ".env"));
+}
 
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
     ?? throw new InvalidOperationException("Falta DISCORD_TOKEN en el .env");
