@@ -108,6 +108,39 @@ public class GestorPartidasTests
     }
 
     [Fact]
+    public async Task CompensarPartidasActivasPorCierreAsync_PartidaConApuesta_SumaElExtraALosDosYLimpiaElEstado()
+    {
+        var connectionString = ConexionDePrueba.ObtenerConnectionString();
+        var gestor = CrearGestor(connectionString: connectionString);
+        var repositorio = new UsuarioRepository(connectionString);
+        await using var jugador1 = await UsuarioDePrueba.CrearAsync(connectionString, monedas: 1000);
+        await using var jugador2 = await UsuarioDePrueba.CrearAsync(connectionString, monedas: 1000);
+        gestor.IniciarPartida(canalId: 1, jugador1Id: jugador1.Id, jugador2Id: jugador2.Id, puntosObjetivo: 15);
+        gestor.ApuestasActivas[1] = 300;
+
+        await gestor.CompensarPartidasActivasPorCierreAsync();
+
+        var actualizado1 = await repositorio.ObtenerUsuarioAsync(jugador1.Id);
+        var actualizado2 = await repositorio.ObtenerUsuarioAsync(jugador2.Id);
+        Assert.Equal(1300, actualizado1!.Monedas);
+        Assert.Equal(1300, actualizado2!.Monedas);
+        Assert.False(gestor.PartidasActivas.ContainsKey(1));
+        Assert.False(gestor.JugadoresActivos.ContainsKey(jugador1.Id));
+        Assert.False(gestor.JugadoresActivos.ContainsKey(jugador2.Id));
+        Assert.False(gestor.ApuestasActivas.ContainsKey(1));
+    }
+
+    [Fact]
+    public async Task CompensarPartidasActivasPorCierreAsync_SinPartidasActivas_NoTiraExcepcion()
+    {
+        var gestor = CrearGestor();
+
+        var excepcion = await Record.ExceptionAsync(() => gestor.CompensarPartidasActivasPorCierreAsync());
+
+        Assert.Null(excepcion);
+    }
+
+    [Fact]
     public void RegistrarReto_SinRetoPrevio_LoRegistraYDevuelveTrue()
     {
         var gestor = CrearGestor();

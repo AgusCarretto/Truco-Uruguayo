@@ -104,6 +104,12 @@ URL y elegí tu servidor de pruebas.
   y quieras publicarlo).
 - `/ayuda` → botón "¿Cómo se juega?" tiene que aparecer ahí ahora, no solo en la
   bienvenida.
+- **Cierre prolijo**: arrancá una partida con apuesta, y en vez de matar el proceso de
+  golpe, hacé un cierre normal (Ctrl+C en `dotnet run`, o `docker compose stop bot`).
+  Tiene que aparecer un mensaje en el canal de la partida avisando que se cortó y sumando
+  el extra, y en `/perfil` de ambos jugadores el saldo tiene que reflejarlo. Con
+  `docker compose kill bot` (eso sí mata de golpe, sin SIGTERM) no debería pasar nada de
+  esto — es el caso esperado que queda sin cubrir.
 
 **Flujo completo de una partida** (esto ya estaba probado por tests automáticos, pero
 nunca de punta a punta jugando de verdad en Discord con dos cuentas):
@@ -114,19 +120,34 @@ nunca de punta a punta jugando de verdad en Discord con dos cuentas):
 - Ganar una partida y confirmar que si corresponde aparece el mensaje de logro
   desbloqueado.
 
+## Cierre prolijo del bot (implementado)
+
+El estado de las partidas sigue siendo en memoria (no se persiste `Ronda` en la base — se
+decidió que no vale la pena la complejidad para un caso raro). Pero ahora, en vez de que
+un reinicio simplemente mate las partidas en curso sin avisar:
+
+- `Program.cs` engancha **SIGTERM** (lo que manda `docker stop`/`docker compose down`,
+  con ~10s de gracia antes de que Docker mate el proceso) y **SIGINT** (Ctrl+C en local).
+  En vez de cortar de golpe, el bot frena ahí, liquida las partidas activas, y recién
+  después se desconecta.
+- `GestorPartidas.CompensarPartidasActivasPorCierreAsync()`: por cada partida activa, le
+  suma a **cada uno** de los dos jugadores el valor de la apuesta como compensación (la
+  apuesta en sí nunca se había descontado — ver el fix de la primera tanda — así que esto
+  es puro extra, nadie queda mejor que otro) y manda un mensaje al canal explicando que la
+  partida se cortó por un reinicio y por qué. `/perfil` va a reflejar el extra al toque.
+- Si el bot se cae de golpe (crash, `kill -9`, corte de luz) en vez de cerrarse prolijo,
+  esto no llega a correr — para eso no hay nada que hacer sin persistir partidas de verdad,
+  y quedó fuera de alcance a propósito (ver más abajo).
+
 ## Lo que dejé sin tocar (a propósito, o porque necesita algo de tu lado)
 
 - **Bot solo soporta 1 vs 1.** No hay truco de a 4/6 ni equipos — no lo armé porque nadie
   lo pidió, sería una feature nueva grande, no algo que faltaba "terminar".
-- **El estado de las partidas activas sigue siendo en memoria** — si el bot se reinicia a
-  mitad de una partida, esa partida se pierde (hay que volver a jugar desde cero). Vos sos
-  el host y reiniciar no es el modo normal de operar, así que esto no es un problema del
-  día a día. **Mejora pendiente decidida (no implementada todavía):** en vez de persistir
-  el estado completo de la `Ronda` en la base (cambio grande, complica el schema y la
-  lógica para un caso raro), al arrancar el bot detectar que había partidas activas que se
-  perdieron y devolverle a cada jugador su apuesta **más un extra** de compensación por el
-  corte de conexión. Mucho más simple, sin tocar el modelo de partidas ni agregar tablas
-  nuevas.
+- **Persistencia real de partidas en curso** (para sobrevivir un crash, no solo un cierre
+  prolijo) seguiría siendo un cambio grande — nueva tabla, serializar/deserializar una
+  `Ronda` a mitad de resolución de un Envido/Truco/Flor pendiente. Con el cierre prolijo ya
+  cubierto, esto solo importaría para el caso de un crash de verdad, que es mucho menos
+  frecuente — lo dejo anotado pero no lo armé.
 - **Avatar/ícono del bot**: eso se sube a mano en el Developer Portal (Bot > ícono), no es
   algo que se pueda hacer desde código.
 - **Decisión tuya:** cuándo sacar `DISCORD_GUILD_ID` del `.env` para pasar a registro
@@ -134,5 +155,5 @@ nunca de punta a punta jugando de verdad en Discord con dos cuentas):
 
 ## Tests
 
-`dotnet test TrucoUruguayo.slnx` corre los 195 tests (140 de Core, sin DB; 55 de Bot,
+`dotnet test TrucoUruguayo.slnx` corre los 197 tests (140 de Core, sin DB; 57 de Bot,
 necesitan la Postgres con `schema.sql` aplicado). Todos verdes en esta rama.

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -180,4 +181,34 @@ async Task EnviarBienvenidaAsync(SocketInteraction interaction)
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
-await Task.Delay(Timeout.Infinite);
+// Cierre prolijo: Ctrl+C en local (SIGINT) o "docker stop"/"docker compose down" (SIGTERM,
+// con ~10s de gracia antes de que Docker mate el proceso) frenan aca en vez de matar el
+// proceso de golpe, asi da tiempo a liquidar las partidas en curso (GestorPartidas.
+// CompensarPartidasActivasPorCierreAsync) antes de desconectar.
+var cierreSolicitado = new CancellationTokenSource();
+
+using var registroSigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, contexto =>
+{
+    contexto.Cancel = true;
+    cierreSolicitado.Cancel();
+});
+
+using var registroSigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, contexto =>
+{
+    contexto.Cancel = true;
+    cierreSolicitado.Cancel();
+});
+
+try
+{
+    await Task.Delay(Timeout.Infinite, cierreSolicitado.Token);
+}
+catch (OperationCanceledException)
+{
+    // Se pidio cerrar el bot -- sigue abajo con el cierre prolijo.
+}
+
+Console.WriteLine("Cerrando: liquidando partidas activas...");
+await services.GetRequiredService<GestorPartidas>().CompensarPartidasActivasPorCierreAsync();
+await client.StopAsync();
+Console.WriteLine("Listo, cerrado.");

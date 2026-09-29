@@ -78,6 +78,52 @@ public class GestorPartidas
         }
     }
 
+    // Se llama al cerrar el bot de forma prolija (Ctrl+C o SIGTERM de Docker, ver
+    // Program.cs). No persistimos las partidas en curso, asi que en vez de intentar
+    // retomarlas al arrancar de nuevo, se liquidan ahora mismo: nadie pierde su apuesta (ya
+    // no se descuenta hasta el final, ver FinalizarPartidaAsync/ChequearInactividadAsync) y
+    // se le suma a cada uno un extra como disculpa por el corte.
+    public async Task CompensarPartidasActivasPorCierreAsync()
+    {
+        // Frena el timer de AFK y espera a que termine si estaba a mitad de liquidar algo,
+        // para no liquidar la misma partida dos veces en paralelo.
+        await _timerAfk.DisposeAsync();
+
+        foreach (var (canalId, ronda) in PartidasActivas.ToArray())
+        {
+            var apuesta = ApuestasActivas.GetValueOrDefault(canalId);
+
+            if (apuesta > 0)
+            {
+                await _usuarioRepository.ActualizarMonedasAsync(ronda.Jugador1Id, apuesta);
+                await _usuarioRepository.ActualizarMonedasAsync(ronda.Jugador2Id, apuesta);
+            }
+
+            if (_client.GetChannel(canalId) is IMessageChannel canal)
+            {
+                try
+                {
+                    var textoExtra = apuesta > 0
+                        ? $", y les sumamos 🪙 {apuesta} monedas extra a cada uno como disculpa"
+                        : string.Empty;
+
+                    await canal.SendMessageAsync(
+                        $"🔧 El bot se tiene que reiniciar y esta partida queda cortada acá. "
+                        + $"No perdiste nada de tu apuesta{textoExtra}. ¡Empezá una nueva partida cuando quieras!");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"No se pudo avisar en el canal {canalId} sobre el cierre: {ex.Message}");
+                }
+            }
+
+            PartidasActivas.TryRemove(canalId, out _);
+            JugadoresActivos.TryRemove(ronda.Jugador1Id, out _);
+            JugadoresActivos.TryRemove(ronda.Jugador2Id, out _);
+            ApuestasActivas.TryRemove(canalId, out _);
+        }
+    }
+
     public bool TieneRetoPendiente(ulong retadorId) => RetosPendientes.ContainsKey(retadorId);
 
     public bool RegistrarReto(RetoPendiente reto)
