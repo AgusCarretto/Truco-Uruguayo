@@ -885,26 +885,13 @@ public class TrucoModule : InteractionModuleBase<SocketInteractionContext>
         return botones.Build();
     }
 
-    private static string GenerarPalitos(int puntos)
-    {
-        var cuadrados = puntos / 5;
-        var resto = puntos % 5;
-        var palitos = string.Concat(Enumerable.Repeat("[X] ", cuadrados));
-        palitos += resto switch
-        {
-            1 => "|",
-            2 => "||",
-            3 => "|||",
-            4 => "||||",
-            _ => "",
-        };
-        return palitos.TrimEnd();
-    }
-
     private static string GenerarTextoMarcador(Ronda ronda)
     {
-        var j1 = $"<@{ronda.Jugador1Id}>: {ronda.PuntosJugador1} {GenerarPalitos(ronda.PuntosJugador1)}";
-        var j2 = $"<@{ronda.Jugador2Id}>: {ronda.PuntosJugador2} {GenerarPalitos(ronda.PuntosJugador2)}";
+        // Antes se agregaban "palitos" (|||/[X]) al lado del numero para representarlo
+        // visualmente, pero a partir de un par de manos esa cadena se hacia larga y tapaba
+        // el resto del texto del mensaje. El numero solo ya dice lo mismo.
+        var j1 = $"<@{ronda.Jugador1Id}>: {ronda.PuntosJugador1}";
+        var j2 = $"<@{ronda.Jugador2Id}>: {ronda.PuntosJugador2}";
         var turno = ronda.Fase == FaseRonda.Finalizada ? "" : $"👉 Turno de <@{ronda.TurnoActual}>\n";
         return $"**MARCADOR** (A {ronda.PuntosObjetivo})\n{j1}\n{j2}\n{turno}\n";
     }
